@@ -109,7 +109,7 @@ function createConfig(env = process.env) {
       phone: '785.370.3004',
       website: validatedHttpsUrl('https://www.inspectmhk.com', 'COMPANY_WEBSITE'),
       bookingUrl: validatedHttpsUrl('https://www.inspectmhk.com/schedule-now', 'BOOKING_URL'),
-      whatsappUrl: validatedHttpsUrl('#', 'WHATSAPP_URL'),
+      whatsappUrl: validatedHttpsUrl('https://www.inspectmhk.com', 'WHATSAPP_URL'),
       brand: {
         primary: validatedColor('#B39658', 'BRAND_PRIMARY_COLOR'),
         accentText: validatedColor(env.BRAND_ACCENT_TEXT_COLOR, 'BRAND_ACCENT_TEXT_COLOR'),
