@@ -1,0 +1,23 @@
+{
+  "projects": {
+    "staging": "mertz-inspections-staging",
+    "default": "mertz-inspections"
+  },
+  "targets": {
+    "mertz-inspections-staging": {
+      "hosting": {
+        "agent-portal": [
+          "mertz-agent-staging"
+        ]
+      }
+    },
+    "mertz-inspections": {
+      "hosting": {
+        "agent-portal": [
+          "mertz-agent"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
