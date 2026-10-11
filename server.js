@@ -222,7 +222,7 @@ function bearerToken(req) {
   return match?.[1];
 }
 
-function assertCompanyScope(records, companyId) {
+/* function assertCompanyScope(records, companyId) {
   for (const record of records) {
     const attributeId = record?.attributes?.company_id;
     if (attributeId !== companyId) {
@@ -234,6 +234,19 @@ function assertCompanyScope(records, companyId) {
       if (!resource || Array.isArray(resource) || typeof resource !== 'object' || resource.type !== 'company' || resource.id !== companyId) {
         throw authError('Upstream company relationship mismatch', 403);
       }
+    }
+  }
+} */
+
+function assertCompanyScope(records, scope) {
+  const expectedId = String(scope);
+  for (const record of records) {
+    const attrCompanyId = record?.attributes?.company_id != null ? String(record.attributes.company_id) : null;
+    const relCompanyId = record?.relationships?.company?.data?.id != null ? String(record.relationships.company.data.id) : null;
+    const actualId = attrCompanyId || relCompanyId;
+
+    if (actualId !== expectedId) {
+      throw authError('Upstream company scope mismatch', 403);
     }
   }
 }
