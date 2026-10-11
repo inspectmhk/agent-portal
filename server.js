@@ -425,19 +425,53 @@ function createPortal(options = {}) {
     const connection = connections.data;
     assertRecordId(connection, connectionId, 'connection');
     assertCompanyScope([connection], scope);
+    
+    /* Start Edit
+    
     const stats = await upstreamGet(query('/v2/connection_stats', {
       'filter[id]': connectionId, 'page[size]': '1'
     }));
     if (!Array.isArray(stats.data) || stats.data.length !== 1) throw authError('Upstream stats record missing or ambiguous', 403);
     assertRecordId(stats.data[0], connectionId, 'stats');
-    assertCompanyScope(stats.data, scope);
+    assertCompanyScope(stats.data, scope); */
+    
+    const stats = await upstreamGet(query('/v2/connection_stats', {
+      'filter[id]': connectionId, 'page[size]': '1'
+    }));
+    if (!Array.isArray(stats.data)) throw authError('Upstream stats data missing', 403);
+
+    const statRecord = stats.data[0] || {
+      id: connectionId,
+      type: 'connection_stat',
+      attributes: {
+        company_id: Number(scope),
+        buying_inspections_count: 0,
+        selling_inspections_count: 0,
+        total_inspections_count: 0,
+        first_inspection_date: null,
+        last_inspection_date: null
+      }
+    };
+
+    if (stats.data.length > 0) {
+      assertRecordId(statRecord, connectionId, 'stats');
+      assertCompanyScope([statRecord], scope);
+    }
+
+    /* End Edit */
+    
     const inspections = await upstreamGet(query('/v2/inspections', {
       'filter[connection_id]': connectionId, include: 'buying_agent,selling_agent,company', sort: '-datetime', 'page[size]': '50'
     }));
     if (!Array.isArray(inspections.data)) throw authError('Upstream inspections data missing', 403);
     assertInspectionScope(inspections.data, scope, connectionId);
     const attrs = connection.attributes || {};
-    const statAttrs = stats.data?.[0]?.attributes || {};
+
+    /* Start Edit
+    const statAttrs = stats.data?.[0]?.attributes || {}; */
+    const statAttrs = statRecord.attributes || {};
+    /* End Edit */
+    
     return {
       meta: { mode: 'live' },
       company: sample.company,
