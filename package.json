@@ -20,7 +20,7 @@
     "SECURITY.md"
   ],
   "scripts": {
-    "start": "node server.js",
+    "start": "node --env-file=.env server.js",
     "test": "node --test",
     "scan:public": "node scripts/public-safety-scan.js",
     "create-link": "node scripts/create-portal-link.js",
