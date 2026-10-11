@@ -102,14 +102,14 @@ function createConfig(env = process.env) {
     rateLimitMax: boundedInteger(env.RATE_LIMIT_MAX, 60, 1, 1000),
     rateLimitWindowMs: boundedInteger(env.RATE_LIMIT_WINDOW_MS, 60_000, 1000, 3_600_000),
     branding: {
-      appName: 'Agent Portal | Mertz Inspections',
+      appName: 'Agent Portal',
       name: 'Mertz Inspections',
       tagline: 'Engineering-Minded Inspections',
       license: '#NACHI23080842',
       phone: '785.370.3004',
       website: validatedHttpsUrl('https://www.inspectmhk.com', 'COMPANY_WEBSITE'),
       bookingUrl: validatedHttpsUrl('https://www.inspectmhk.com/schedule-now', 'BOOKING_URL'),
-      whatsappUrl: validatedHttpsUrl('https://www.inspectmhk.com', 'WHATSAPP_URL'),
+      whatsappUrl: '/',
       brand: {
         primary: validatedColor('#B39658', 'BRAND_PRIMARY_COLOR'),
         accentText: validatedColor(env.BRAND_ACCENT_TEXT_COLOR, 'BRAND_ACCENT_TEXT_COLOR'),
