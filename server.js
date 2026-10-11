@@ -104,7 +104,7 @@ function createConfig(env = process.env) {
     branding: {
       appName: 'Agent Portal | Mertz Inspections',
       name: 'Mertz Inspections',
-      tagline: 'Engineering-Minded Inspections,
+      tagline: 'Engineering-Minded Inspections',
       license: '#NACHI23080842',
       phone: '785.370.3004',
       website: validatedHttpsUrl('https://www.inspectmhk.com', 'COMPANY_WEBSITE'),
