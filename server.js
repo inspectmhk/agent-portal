@@ -298,30 +298,35 @@ function mapInspection(insp) {
 function mapInspection(insp) {
   const attrs = insp.attributes || {};
   let formattedDate = '';
-  
+
   if (attrs.datetime) {
-    // Normalize en-dashes/em-dashes to standard hyphens
-    const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-');
+    // Force to string and replace en-dashes/em-dashes with standard ASCII hyphens (-)
+    const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-').trim();
     const parsed = new Date(cleanDatetime);
-    
+
     if (!isNaN(parsed.getTime())) {
-      // Send standard ISO string or format as ISO timestamp so frontend can display time
       formattedDate = parsed.toISOString();
     } else {
       formattedDate = cleanDatetime;
     }
   }
-  /* END FIX 10122026 */
+
+  const city = attrs.property_city || attrs.city || '';
+  const state = attrs.property_state || attrs.state || '';
+  const street = attrs.property_address_1 || attrs.address_1 || '';
+  const locationParts = [street, city, state].filter(Boolean);
 
   return {
     date: formattedDate,
-    location: [attrs.property_city, attrs.property_state].filter(Boolean).join(', ') || 'Location withheld',
+    location: locationParts.length > 0 ? locationParts.join(', ') : 'Location withheld',
     services: [attrs.service_names, attrs.service_add_on_names].filter(Boolean).join(' + '),
     inspector: attrs.inspector_name || '',
     status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
     published: Boolean(attrs.published_at)
   };
 }
+/* END FIX 10122026 */
+
 
 function readUpstreamJson(response, maxBytes) {
   return new Promise((resolve, reject) => {
