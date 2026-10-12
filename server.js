@@ -282,7 +282,7 @@ function assertInspectionScope(records, companyId, connectionId) {
   }
 }
 
-/* FIX "Invalid time value" Error, 10122026
+/* FIX "Invalid time value" & "Location withheld" Errors, 10122026
 function mapInspection(insp) {
   const attrs = insp.attributes || {};
   return {
@@ -304,20 +304,13 @@ function mapInspection(insp) {
     const parsed = new Date(cleanDatetime);
 
     if (!isNaN(parsed.getTime())) {
-      // Send standard YYYY-MM-DD format expected by client JS
       formattedDate = parsed.toISOString().slice(0, 10);
     } else {
       formattedDate = cleanDatetime.slice(0, 10);
     }
   }
 
-  // Fallback chain across all possible Spectora address fields
-  const street = attrs.property_address_1 || attrs.address_1 || attrs.address || attrs.street || '';
-  const city = attrs.property_city || attrs.city || '';
-  const state = attrs.property_state || attrs.state || '';
-
-  const locationParts = [street, city, state].filter(Boolean);
-  const location = locationParts.length > 0 ? locationParts.join(', ') : (city || state ? [city, state].filter(Boolean).join(', ') : 'Location withheld');
+  const location = attrs.property_address || attrs.full_address || 'Location withheld';
 
   return {
     date: formattedDate,
@@ -518,17 +511,8 @@ function createPortal(options = {}) {
         agency: attrs.agency_name || '',
         city: attrs.city || '',
         state: attrs.state || '',
-        photoUrl: sample.agent.photoUrl
+        photoUrl: attrs.image || attrs.thumb || sample.agent.photoUrl
       },
-      /* START FIX, 10122026 
-      stats: {
-        totalInspections: Number(statAttrs.total_inspections_count || attrs.total_inspections_count || 0),
-        buyingInspections: Number(statAttrs.buying_inspections_count || 0),
-        sellingInspections: Number(statAttrs.selling_inspections_count || 0),
-        firstInspection: statAttrs.first_inspection_date || null,
-        lastInspection: statAttrs.last_inspection_date || null,
-        overallCount: Number(statAttrs.overall_inspections_count || 0)
-      }, */
       stats: {
         totalInspections: Number(statAttrs.total_inspections_count || attrs.total_inspections_count || 0),
         buyingInspections: Number(statAttrs.buying_inspections_count || 0),
@@ -537,7 +521,6 @@ function createPortal(options = {}) {
         lastInspection: statAttrs.last_inspection_date ? String(statAttrs.last_inspection_date).replace(/[\u2010-\u2015]/g, '-').slice(0, 10) : null,
         overallCount: Number(statAttrs.overall_inspections_count || 0)
       },
-      /* END FIX, 10122026*/
       tier: sample.tier,
       inspections: (inspections.data || []).map(mapInspection)
     };
