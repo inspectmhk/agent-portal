@@ -282,10 +282,39 @@ function assertInspectionScope(records, companyId, connectionId) {
   }
 }
 
+/* FIX "Invalid time value" Error, 10122026
 function mapInspection(insp) {
   const attrs = insp.attributes || {};
   return {
     date: attrs.datetime ? new Date(attrs.datetime).toISOString().slice(0, 10) : '',
+    location: [attrs.property_city, attrs.property_state].filter(Boolean).join(', ') || 'Location withheld',
+    services: [attrs.service_names, attrs.service_add_on_names].filter(Boolean).join(' + '),
+    inspector: attrs.inspector_name || '',
+    status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
+    published: Boolean(attrs.published_at)
+  };
+} */
+
+function mapInspection(insp) {
+  const attrs = insp.attributes || {};
+  let formattedDate = '';
+  
+  if (attrs.datetime) {
+    // Normalize en-dashes/em-dashes to standard hyphens
+    const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-');
+    const parsed = new Date(cleanDatetime);
+    
+    if (!isNaN(parsed.getTime())) {
+      // Send standard ISO string or format as ISO timestamp so frontend can display time
+      formattedDate = parsed.toISOString();
+    } else {
+      formattedDate = cleanDatetime;
+    }
+  }
+  /* END FIX 10122026 */
+
+  return {
+    date: formattedDate,
     location: [attrs.property_city, attrs.property_state].filter(Boolean).join(', ') || 'Location withheld',
     services: [attrs.service_names, attrs.service_add_on_names].filter(Boolean).join(' + '),
     inspector: attrs.inspector_name || '',
