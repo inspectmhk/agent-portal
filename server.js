@@ -300,7 +300,7 @@ function mapInspection(insp) {
   let formattedDate = '';
 
   if (attrs.datetime) {
-    // Force to string and replace en-dashes/em-dashes with standard ASCII hyphens (-)
+    // Replace non-standard en-dashes/em-dashes with standard ASCII hyphens (-)
     const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-').trim();
     const parsed = new Date(cleanDatetime);
 
