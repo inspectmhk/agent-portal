@@ -101,51 +101,51 @@ function renderDashboard(data) {
       el('div', { class: 'actions' }, [
         el('a', { class: 'action', href: company.bookingUrl, target: '_blank', rel: 'noopener' }, [
           el('strong', { text: 'Online' }),
-          el('span', { text: 'Open the inspection scheduler' })
+          el('span', { text: company.bookingUrl })
         ]),
         el('a', { class: 'action', href: `tel:${company.phone.replace(/[^\d+]/g, '')}` }, [
-          el('strong', { text: 'Call' }),
+          el('strong', { text: 'Call or Text' }),
           el('span', { text: company.phone })
         ]),
-        el('a', { class: 'action', href: company.whatsappUrl, target: '_blank', rel: 'noopener' }, [
-          el('strong', { text: 'Message' }),
-          el('span', { text: 'Start a quick conversation' })
-        ]),
-        el('a', { class: 'action', href: company.website, target: '_blank', rel: 'noopener' }, [
-          el('strong', { text: 'Website' }),
-          el('span', { text: 'View services and resources' })
-        ])
+        // el('a', { class: 'action', href: company.whatsappUrl, target: '_blank', rel: 'noopener' }, [
+        //   el('strong', { text: 'Message' }),
+        //   el('span', { text: 'Start a quick conversation' })
+        // ]),
+        // el('a', { class: 'action', href: company.website, target: '_blank', rel: 'noopener' }, [
+        //   el('strong', { text: 'Website' }),
+        //   el('span', { text: 'View services and resources' })
+        // ])
       ])
     ])
   );
 
-  app.append(
-    el('section', { class: 'section' }, [
-      el('h2', { text: 'Relationship Snapshot' }),
-      el('div', { class: 'metrics' }, [
-        el('div', { class: 'metric' }, [el('strong', { text: stats.totalInspections }), el('span', { text: 'Total' })]),
-        el('div', { class: 'metric' }, [el('strong', { text: stats.buyingInspections }), el('span', { text: 'Buying' })]),
-        el('div', { class: 'metric' }, [el('strong', { text: stats.sellingInspections }), el('span', { text: 'Selling' })])
-      ])
-    ])
-  );
+  // app.append(
+  //   el('section', { class: 'section' }, [
+  //     el('h2', { text: 'Relationship Snapshot' }),
+  //     el('div', { class: 'metrics' }, [
+  //       el('div', { class: 'metric' }, [el('strong', { text: stats.totalInspections }), el('span', { text: 'Total' })]),
+  //       el('div', { class: 'metric' }, [el('strong', { text: stats.buyingInspections }), el('span', { text: 'Buying' })]),
+  //       el('div', { class: 'metric' }, [el('strong', { text: stats.sellingInspections }), el('span', { text: 'Selling' })])
+  //     ])
+  //   ])
+  // );
 
-  app.append(
-    el('section', { class: 'section' }, [
-      el('h2', { text: 'Partnership' }),
-      el('div', { class: 'partnership' }, [
-        el('div', { class: 'partnership-row' }, [
-          el('span', { text: fmtDate(stats.firstInspection) || 'Start' }),
-          el('span', { text: fmtDate(stats.lastInspection) || 'Present' })
-        ]),
-        el('div', { class: 'bar', 'aria-hidden': 'true' }, [el('span')]),
-        el('p', {
-          class: 'privacy-note',
-          text: portalModeCopy.modeNotice(data.meta?.mode)
-        })
-      ])
-    ])
-  );
+  // app.append(
+  //   el('section', { class: 'section' }, [
+  //     el('h2', { text: 'Partnership' }),
+  //     el('div', { class: 'partnership' }, [
+  //       el('div', { class: 'partnership-row' }, [
+  //         el('span', { text: fmtDate(stats.firstInspection) || 'Start' }),
+  //         el('span', { text: fmtDate(stats.lastInspection) || 'Present' })
+  //       ]),
+  //       el('div', { class: 'bar', 'aria-hidden': 'true' }, [el('span')]),
+  //       el('p', {
+  //         class: 'privacy-note',
+  //         text: portalModeCopy.modeNotice(data.meta?.mode)
+  //       })
+  //     ])
+  //   ])
+  // );
 
   const timeline = el('div', { class: 'timeline' });
   for (const inspection of inspections) {

@@ -222,22 +222,6 @@ function bearerToken(req) {
   return match?.[1];
 }
 
-/* function assertCompanyScope(records, companyId) {
-  for (const record of records) {
-    const attributeId = record?.attributes?.company_id;
-    if (attributeId !== companyId) {
-      throw authError('Upstream company scope mismatch', 403);
-    }
-    if (record.relationships && Object.hasOwn(record.relationships, 'company')) {
-      const relationship = record.relationships.company;
-      const resource = relationship?.data;
-      if (!resource || Array.isArray(resource) || typeof resource !== 'object' || resource.type !== 'company' || resource.id !== companyId) {
-        throw authError('Upstream company relationship mismatch', 403);
-      }
-    }
-  }
-} */
-
 function assertCompanyScope(records, scope) {
   const expectedId = String(scope);
   for (const record of records) {
@@ -282,19 +266,6 @@ function assertInspectionScope(records, companyId, connectionId) {
   }
 }
 
-/* FIX "Invalid time value" & "Location withheld" Errors, 10122026
-function mapInspection(insp) {
-  const attrs = insp.attributes || {};
-  return {
-    date: attrs.datetime ? new Date(attrs.datetime).toISOString().slice(0, 10) : '',
-    location: [attrs.property_city, attrs.property_state].filter(Boolean).join(', ') || 'Location withheld',
-    services: [attrs.service_names, attrs.service_add_on_names].filter(Boolean).join(' + '),
-    inspector: attrs.inspector_name || '',
-    status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
-    published: Boolean(attrs.published_at)
-  };
-} */
-
 function mapInspection(insp) {
   const attrs = insp.attributes || {};
   let formattedDate = '';
@@ -321,7 +292,6 @@ function mapInspection(insp) {
     published: Boolean(attrs.published_at)
   };
 }
-/* END FIX 10122026 */
 
 
 function readUpstreamJson(response, maxBytes) {
@@ -456,15 +426,6 @@ function createPortal(options = {}) {
     assertRecordId(connection, connectionId, 'connection');
     assertCompanyScope([connection], scope);
     
-    /* Start Edit
-    
-    const stats = await upstreamGet(query('/v2/connection_stats', {
-      'filter[id]': connectionId, 'page[size]': '1'
-    }));
-    if (!Array.isArray(stats.data) || stats.data.length !== 1) throw authError('Upstream stats record missing or ambiguous', 403);
-    assertRecordId(stats.data[0], connectionId, 'stats');
-    assertCompanyScope(stats.data, scope); */
-    
     const stats = await upstreamGet(query('/v2/connection_stats', {
       'filter[id]': connectionId, 'page[size]': '1'
     }));
@@ -487,20 +448,14 @@ function createPortal(options = {}) {
       assertRecordId(statRecord, connectionId, 'stats');
       assertCompanyScope([statRecord], scope);
     }
-
-    /* End Edit */
     
     const inspections = await upstreamGet(query('/v2/inspections', {
-      'filter[connection_id]': connectionId, include: 'buying_agent,selling_agent,company', sort: '-datetime', 'page[size]': '50'
+      'filter[connection_id]': connectionId, include: 'buying_agent,selling_agent,company,custom_fields', sort: '-datetime', 'page[size]': '50'
     }));
     if (!Array.isArray(inspections.data)) throw authError('Upstream inspections data missing', 403);
     assertInspectionScope(inspections.data, scope, connectionId);
     const attrs = connection.attributes || {};
-
-    /* Start Edit
-    const statAttrs = stats.data?.[0]?.attributes || {}; */
     const statAttrs = statRecord.attributes || {};
-    /* End Edit */
     
     return {
       meta: { mode: 'live' },
