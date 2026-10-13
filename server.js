@@ -267,7 +267,6 @@ function assertInspectionScope(records, companyId, connectionId) {
 }
 
 function mapInspection(insp, included = []) {
-  // Ensure insp and attributes exist safely
   const attrs = (insp && insp.attributes) || {};
   let formattedDate = '';
 
@@ -282,27 +281,40 @@ function mapInspection(insp, included = []) {
     }
   }
 
-  // Safely extract linked custom field IDs for this specific inspection
+  // Extract linked custom field IDs for this specific inspection
   const relFieldData = insp?.relationships?.custom_fields?.data || [];
   const linkedIds = new Set(
     Array.isArray(relFieldData) ? relFieldData.map(item => String(item.id)) : []
   );
 
   let isFinished = false;
+  let foundFinishedField = false;
 
-  // Cross-reference against top-level included array safely
   if (Array.isArray(included) && included.length > 0) {
     for (const item of included) {
       if (item && item.type === 'custom_field' && linkedIds.has(String(item.id))) {
-        const fieldName = item.attributes?.name || '';
-        // Match on custom field ID 44196797 or field name "Finished"
-        if (String(item.id) === '44196797' || fieldName.toLowerCase() === 'finished') {
+        const tplId = item.attributes?.custom_field_template_id;
+        const identifier = item.attributes?.identifier || '';
+        const name = item.attributes?.name || '';
+
+        // Match on template ID 47540 or identifier/name 'Finished'
+        if (
+          tplId === 47540 ||
+          identifier.toLowerCase() === 'finished' ||
+          name.toLowerCase() === 'finished'
+        ) {
+          foundFinishedField = true;
           const val = item.attributes?.value;
           isFinished = val === '1' || val === 1 || val === true || val === 'true';
           break;
         }
       }
     }
+  }
+
+  // Fallback for older inspections that don't have the "Finished" custom field
+  if (!foundFinishedField) {
+    isFinished = Boolean(attrs.published_at);
   }
 
   return {
