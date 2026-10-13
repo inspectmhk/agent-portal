@@ -119,16 +119,16 @@ function renderDashboard(data) {
     ])
   );
 
-  // app.append(
-  //   el('section', { class: 'section' }, [
-  //     el('h2', { text: 'Relationship Snapshot' }),
-  //     el('div', { class: 'metrics' }, [
-  //       el('div', { class: 'metric' }, [el('strong', { text: stats.totalInspections }), el('span', { text: 'Total' })]),
-  //       el('div', { class: 'metric' }, [el('strong', { text: stats.buyingInspections }), el('span', { text: 'Buying' })]),
-  //       el('div', { class: 'metric' }, [el('strong', { text: stats.sellingInspections }), el('span', { text: 'Selling' })])
-  //     ])
-  //   ])
-  // );
+  app.append(
+    el('section', { class: 'section' }, [
+      el('h2', { text: 'Relationship Snapshot' }),
+      el('div', { class: 'metrics' }, [
+        el('div', { class: 'metric' }, [el('strong', { text: stats.totalInspections }), el('span', { text: 'Total' })]),
+        el('div', { class: 'metric' }, [el('strong', { text: stats.buyingInspections }), el('span', { text: 'Buying' })]),
+        el('div', { class: 'metric' }, [el('strong', { text: stats.sellingInspections }), el('span', { text: 'Selling' })])
+      ])
+    ])
+  );
 
   // app.append(
   //   el('section', { class: 'section' }, [
@@ -147,32 +147,95 @@ function renderDashboard(data) {
   //   ])
   // );
 
-  const timeline = el('div', { class: 'timeline' });
-  for (const inspection of inspections) {
-    const date = monthDay(inspection.date);
-    timeline.append(
-      el('article', { class: 'timeline-item' }, [
-        el('div', { class: 'date' }, [
-          document.createTextNode(date.month),
-          el('span', { text: date.day })
-        ]),
-        el('div', {}, [
-          el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
-          el('p', {
-            class: 'inspection-meta',
-            text: `${inspection.services} | ${inspection.inspector} | ${inspection.status}`
-          })
+  // const timeline = el('div', { class: 'timeline' });
+  // for (const inspection of inspections) {
+  //   const date = monthDay(inspection.date);
+  //   timeline.append(
+  //     el('article', { class: 'timeline-item' }, [
+  //       el('div', { class: 'date' }, [
+  //         document.createTextNode(date.month),
+  //         el('span', { text: date.day })
+  //       ]),
+  //       el('div', {}, [
+  //         el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
+  //         el('p', {
+  //           class: 'inspection-meta',
+  //           text: `${inspection.services}`
+  //         })
+  //       ])
+  //     ])
+  //   );
+  // }
+
+  // app.append(
+  //   el('section', { class: 'section' }, [
+  //     el('h2', { text: 'Inspection History' }),
+  //     timeline
+  //   ])
+  // );
+
+  // --- REPLACED TIMELINE CODE STARTS HERE ---
+
+  // Separate inspections into upcoming/incomplete vs. past based on finished status
+  const upcomingInspections = inspections.filter(insp => !insp.finished);
+  const pastInspections = inspections.filter(insp => insp.finished);
+
+  // Helper to construct a timeline section
+  function buildTimeline(list) {
+    const timelineEl = el('div', { class: 'timeline' });
+    for (const inspection of list) {
+      const date = monthDay(inspection.date);
+      timelineEl.append(
+        el('article', { class: 'timeline-item' }, [
+          el('div', { class: 'date' }, [
+            document.createTextNode(date.month),
+            el('span', { text: date.day })
+          ]),
+          el('div', {}, [
+            el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
+            el('p', {
+              class: 'inspection-meta',
+              text: inspection.services
+            })
+          ])
         ])
+      );
+    }
+    return timelineEl;
+  }
+
+  // 1. Upcoming / Active Inspections Section
+  const upcomingContent = upcomingInspections.length > 0
+    ? buildTimeline(upcomingInspections)
+    : el('div', { class: 'empty-state' }, [
+        el('p', { text: 'No upcoming inspections scheduled.' }),
+        el('a', {
+          class: 'action-link',
+          href: company.bookingUrl,
+          target: '_blank',
+          rel: 'noopener',
+          text: 'Schedule an Inspection'
+        })
+      ]);
+
+  app.append(
+    el('section', { class: 'section' }, [
+      el('h2', { text: 'Upcoming Inspections' }),
+      upcomingContent
+    ])
+  );
+
+  // 2. Past Inspections Section
+  if (pastInspections.length > 0) {
+    app.append(
+      el('section', { class: 'section' }, [
+        el('h2', { text: 'Past Inspections' }),
+        buildTimeline(pastInspections)
       ])
     );
   }
 
-  app.append(
-    el('section', { class: 'section' }, [
-      el('h2', { text: 'Inspection History' }),
-      timeline
-    ])
-  );
+  // --- REPLACED TIMELINE CODE ENDS HERE --- 
 
   app.append(
     el('footer', { class: 'footer' }, [
