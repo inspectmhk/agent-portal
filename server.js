@@ -266,7 +266,7 @@ function assertInspectionScope(records, companyId, connectionId) {
   }
 }
 
-function mapInspection(insp) {
+function mapInspection(insp, included = []) {
   const attrs = insp.attributes || {};
   let formattedDate = '';
 
@@ -281,18 +281,34 @@ function mapInspection(insp) {
     }
   }
 
-  const location = attrs.property_address || attrs.full_address || 'Location withheld';
+  // Find linked custom fields for this inspection
+  const relFieldData = insp.relationships?.custom_fields?.data || [];
+  const linkedIds = new Set(relFieldData.map(item => String(item.id)));
+
+  let isFinished = false;
+
+  // Search included array for linked custom field named 'Finished' or ID '44196797'
+  for (const item of included) {
+    if (item.type === 'custom_field' && linkedIds.has(String(item.id))) {
+      const fieldName = item.attributes?.name || '';
+      if (String(item.id) === '44196797' || fieldName.toLowerCase() === 'finished') {
+        const val = item.attributes?.value;
+        isFinished = val === '1' || val === 1 || val === true || val === 'true';
+        break;
+      }
+    }
+  }
 
   return {
     date: formattedDate,
-    location,
+    location: attrs.property_address || attrs.full_address || 'Location withheld',
     services: [attrs.service_names, attrs.service_add_on_names].filter(Boolean).join(' + '),
     inspector: attrs.inspector_name || '',
     status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
-    published: Boolean(attrs.published_at)
+    published: Boolean(attrs.published_at),
+    finished: isFinished
   };
 }
-
 
 function readUpstreamJson(response, maxBytes) {
   return new Promise((resolve, reject) => {
