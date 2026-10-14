@@ -87,7 +87,9 @@ function categorizeInspections(inspections) {
       continue;
     }
 
-    const startDate = insp.rawDatetime ? new Date(insp.rawDatetime) : null;
+    const dateVal = insp.rawDatetime || insp.date;
+    const startDate = dateVal ? new Date(dateVal) : null;
+    
     if (!startDate || isNaN(startDate.getTime())) {
       upcoming.push(insp);
       continue;
@@ -100,7 +102,6 @@ function categorizeInspections(inspections) {
     } else if (now < startDate) {
       upcoming.push(insp);
     } else {
-      // Past inspection start time but not yet marked 'Finished'
       inProgress.push(insp);
     }
   }
@@ -155,14 +156,16 @@ function renderDashboard(data) {
   const { upcoming, inProgress, completed } = categorizeInspections(inspections);
 
   // Timeline Builder for 3 Stages
-  function buildTimeline(list, stageClass, showDetails = false) {
+function buildTimeline(list, stageClass, showDetails = false) {
     const timelineEl = el('div', { class: 'timeline' });
     for (const inspection of list) {
-      const date = monthDay(inspection.rawDatetime || inspection.date);
+      // Safe fallback string to prevent "Invalid time value" in monthDay
+      const validDateStr = inspection.rawDatetime || inspection.date || new Date().toISOString();
+      const date = monthDay(validDateStr);
       
       const dateBadge = el('div', { class: `date badge-date ${stageClass}` }, [
-        document.createTextNode(date.month),
-        el('span', { text: date.day })
+        document.createTextNode(date.month || 'TBD'),
+        el('span', { text: date.day || '--' })
       ]);
 
       const detailsEl = el('div', { class: 'inspection-details' }, [
@@ -170,10 +173,11 @@ function renderDashboard(data) {
         el('p', { class: 'inspection-meta', text: inspection.services })
       ]);
 
-      // Timeline breakdown for Upcoming & In Progress stages
       if (showDetails) {
-        const mainStart = inspection.rawDatetime ? new Date(inspection.rawDatetime) : null;
-        const mainTimeFormatted = mainStart && !isNaN(mainStart.getTime())
+        const raw = inspection.rawDatetime || inspection.date;
+        const mainStart = raw ? new Date(raw) : null;
+        const isValidDate = mainStart && !isNaN(mainStart.getTime());
+        const mainTimeFormatted = isValidDate
           ? mainStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
           : 'Scheduled';
 
@@ -209,7 +213,7 @@ function renderDashboard(data) {
     }
     return timelineEl;
   }
-
+  
   // 1. IN PROGRESS SECTION
   if (inProgress.length > 0) {
     app.append(
