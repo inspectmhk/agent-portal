@@ -280,7 +280,7 @@ function mapInspection(insp, included = []) {
     }
   }
 
-  // Collect linked custom field IDs from inspection relationships
+  // Get custom field IDs linked directly to this inspection
   const relFieldData = insp?.relationships?.custom_fields?.data || [];
   const linkedIds = new Set(
     Array.isArray(relFieldData) ? relFieldData.map(item => String(item.id)) : []
@@ -294,23 +294,16 @@ function mapInspection(insp, included = []) {
     for (const item of included) {
       if (!item || item.type !== 'custom_field') continue;
 
-      const itemAttrs = item.attributes || {};
       const itemId = String(item.id || '');
-      const itemInspId = String(itemAttrs.inspection_id || item.relationships?.inspection?.data?.id || '');
+      // Match if this item ID is in the inspection's relationship list OR if linkedIds is unpopulated
+      if (linkedIds.size > 0 && !linkedIds.has(itemId)) continue;
 
-      // Check if this custom field belongs to this inspection
-      const belongsToThisInspection =
-        linkedIds.has(itemId) ||
-        (itemInspId && itemInspId === String(insp.id)) ||
-        linkedIds.size === 0; // fallback if relationship array is omitted upstream
-
-      if (!belongsToThisInspection) continue;
-
+      const itemAttrs = item.attributes || {};
       const tplId = Number(itemAttrs.custom_field_template_id);
       const identifier = String(itemAttrs.identifier || '').toLowerCase();
       const name = String(itemAttrs.name || '').toLowerCase();
 
-      // Match template ID 47540 or name/identifier 'Finished'
+      // Finished Field Check
       if (
         tplId === 47540 ||
         identifier === 'finished' ||
@@ -321,7 +314,7 @@ function mapInspection(insp, included = []) {
         isFinished = val === '1' || val === 1 || val === true || val === 'true';
       }
 
-      // Match template ID 54966 or name/identifier 'Subcontractor Schedule'
+      // Subcontractor Schedule Check (Template 54966)
       if (
         tplId === 54966 ||
         identifier === 'subcontractorschedule' ||
@@ -536,7 +529,7 @@ function createPortal(options = {}) {
         overallCount: Number(statAttrs.overall_inspections_count || 0)
       },
       tier: sample.tier,
-      inspections: (inspections.data || []).map(mapInspection)
+      inspections: (inspections.data || []).map(insp => mapInspection(insp, inspections.included || []))
     };
   }
 
