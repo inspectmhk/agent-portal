@@ -291,29 +291,32 @@ function mapInspection(insp, included = []) {
 
   if (Array.isArray(included) && included.length > 0) {
     for (const item of included) {
-      if (item && item.type === 'custom_field' && linkedIds.has(String(item.id))) {
-        const tplId = item.attributes?.custom_field_template_id;
-        const identifier = item.attributes?.identifier || '';
-        const name = item.attributes?.name || '';
+      if (item && item.type === 'custom_field') {
+        const itemAttrs = item.attributes || {};
+        const tplId = Number(itemAttrs.custom_field_template_id);
+        const identifier = String(itemAttrs.identifier || '').toLowerCase();
+        const name = String(itemAttrs.name || '').toLowerCase();
 
         // Match template ID 47540 or name/identifier 'Finished'
         if (
           tplId === 47540 ||
-          identifier.toLowerCase() === 'finished' ||
-          name.toLowerCase() === 'finished'
+          identifier === 'finished' ||
+          name === 'finished'
         ) {
           foundFinishedField = true;
-          const val = item.attributes?.value;
+          const val = itemAttrs.value;
           isFinished = val === '1' || val === 1 || val === true || val === 'true';
         }
 
         // Match template ID 54966 or name/identifier 'Subcontractor Schedule'
         if (
           tplId === 54966 ||
-          identifier.toLowerCase() === 'subcontractorschedule' ||
-          name.toLowerCase() === 'subcontractor schedule'
+          identifier === 'subcontractorschedule' ||
+          name === 'subcontractor schedule'
         ) {
-          subcontractorSchedule = item.attributes?.value || '';
+          if (itemAttrs.value) {
+            subcontractorSchedule = String(itemAttrs.value).trim();
+          }
         }
       }
     }
