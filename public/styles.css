@@ -382,21 +382,6 @@ button:focus-visible,
   border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
-/* Subcontractor Status Colors */
-.timeline-val.is-pending {
-  color: #EAB308 !important; /* Yellow */
-  font-weight: 600;
-}
-
-.timeline-val.is-complete {
-  color: #22C55E !important; /* Green */
-  font-weight: 600;
-}
-
-.timeline-val.status-default {
-  color: #E5E7EB;
-}
-
 /* Timeline Rows for Subcontractors */
 .timeline-sub-block {
   margin-top: 8px;
@@ -422,16 +407,36 @@ button:focus-visible,
   display: inline-block;
 }
 
-.dot.main-dot {
-  background-color: #D4AF37;
-}
-
+.dot.main-dot,
 .dot.sub-dot {
-  background-color: #6B7280;
+  background-color: #9CA3AF !important; /* Uniform Grey Bullet */
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
 }
 
 .timeline-label {
+  color: #FFFFFF !important; /* Title in White */
   font-weight: 600;
+}
+
+.timeline-val {
+  color: #9CA3AF !important; /* Time / Date in Grey */
+  font-weight: 400;
+}
+
+.timeline-val.status-default {
   color: #E5E7EB;
 }
 
+.timeline-val.is-pending {
+  color: #EAB308 !important; /* Yellow */
+  font-weight: 600;
+}
+
+.timeline-val.is-complete {
+  color: #22C55E !important; /* Green */
+  font-weight: 600;
+}
