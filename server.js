@@ -274,7 +274,6 @@ function mapInspection(insp, included = []) {
   if (attrs.datetime) {
     const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-').trim();
     const parsed = new Date(cleanDatetime);
-
     if (!isNaN(parsed.getTime())) {
       formattedDate = parsed.toISOString().slice(0, 10);
     } else {
@@ -282,7 +281,6 @@ function mapInspection(insp, included = []) {
     }
   }
 
-  // Extract linked custom field IDs for this specific inspection
   const relFieldData = insp?.relationships?.custom_fields?.data || [];
   const linkedIds = new Set(
     Array.isArray(relFieldData) ? relFieldData.map(item => String(item.id)) : []
@@ -290,6 +288,7 @@ function mapInspection(insp, included = []) {
 
   let isFinished = false;
   let foundFinishedField = false;
+  let subcontractorSchedule = '';
 
   if (Array.isArray(included) && included.length > 0) {
     for (const item of included) {
@@ -298,7 +297,7 @@ function mapInspection(insp, included = []) {
         const identifier = item.attributes?.identifier || '';
         const name = item.attributes?.name || '';
 
-        // Match on template ID 47540 or identifier/name 'Finished'
+        // Match template ID 47540 or name/identifier 'Finished'
         if (
           tplId === 47540 ||
           identifier.toLowerCase() === 'finished' ||
@@ -307,25 +306,36 @@ function mapInspection(insp, included = []) {
           foundFinishedField = true;
           const val = item.attributes?.value;
           isFinished = val === '1' || val === 1 || val === true || val === 'true';
-          break;
+        }
+
+        // Match template ID 54966 or name/identifier 'Subcontractor Schedule'
+        if (
+          tplId === 54966 ||
+          identifier.toLowerCase() === 'subcontractorschedule' ||
+          name.toLowerCase() === 'subcontractor schedule'
+        ) {
+          subcontractorSchedule = item.attributes?.value || '';
         }
       }
     }
   }
 
-  // Fallback for older inspections that don't have the "Finished" custom field
   if (!foundFinishedField) {
     isFinished = Boolean(attrs.published_at);
   }
 
   return {
+    id: insp.id,
     date: formattedDate,
+    rawDatetime: attrs.datetime || null,
+    durationHours: Number(attrs.duration || 2),
     location: attrs.property_address || attrs.full_address || 'Location withheld',
     services: [attrs.service_names, attrs.service_add_on_names].filter(Boolean).join(' + '),
     inspector: attrs.inspector_name || '',
     status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
     published: Boolean(attrs.published_at),
-    finished: isFinished
+    finished: isFinished,
+    subcontractorSchedule: subcontractorSchedule
   };
 }
 

@@ -62,12 +62,59 @@ function applyBrand(company) {
   if (theme) theme.setAttribute('content', company.brand.primary);
 }
 
+// Parse subcontractor string: "Sewer: 10/25 [8am-10am], Radon: Pending"
+function parseSubcontractorEntries(rawString) {
+  if (!rawString) return [];
+  const items = rawString.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+  
+  return items.map(item => {
+    const parts = item.split(':').map(p => p.trim());
+    if (parts.length < 2) return { service: 'Subcontractor', scheduleStr: item };
+    return { service: parts[0], scheduleStr: parts.slice(1).join(':').trim() };
+  });
+}
+
+// Categorize inspections into Upcoming, In Progress, and Completed
+function categorizeInspections(inspections) {
+  const now = new Date();
+  const upcoming = [];
+  const inProgress = [];
+  const completed = [];
+
+  for (const insp of inspections) {
+    if (insp.finished) {
+      completed.push(insp);
+      continue;
+    }
+
+    const startDate = insp.rawDatetime ? new Date(insp.rawDatetime) : null;
+    if (!startDate || isNaN(startDate.getTime())) {
+      upcoming.push(insp);
+      continue;
+    }
+
+    const endDate = new Date(startDate.getTime() + (insp.durationHours || 2) * 3600000);
+
+    if (now >= startDate && now <= endDate) {
+      inProgress.push(insp);
+    } else if (now < startDate) {
+      upcoming.push(insp);
+    } else {
+      // Past inspection start time but not yet marked 'Finished'
+      inProgress.push(insp);
+    }
+  }
+
+  return { upcoming, inProgress, completed };
+}
+
 function renderDashboard(data) {
   const { company, agent, stats, tier, inspections } = data;
   applyBrand(company);
   document.title = `${agent.firstName} ${agent.lastName} | ${company.appName}`;
   app.replaceChildren();
 
+  // Topbar Header
   app.append(
     el('header', { class: 'topbar' }, [
       el('div', { class: 'brand-lockup' }, [
@@ -78,6 +125,7 @@ function renderDashboard(data) {
     ])
   );
 
+  // Hero Section
   const avatar = el('img', {
     class: 'avatar',
     src: agent.photoUrl || '/assets/mock-agent.svg',
@@ -87,38 +135,11 @@ function renderDashboard(data) {
     el('section', { class: 'hero' }, [
       avatar,
       el('h1', { class: 'agent-name', text: `${agent.firstName} ${agent.lastName}` }),
-      el('p', { class: 'agency', text: agent.agency || 'Real estate partner' }),
-      el('div', { class: 'tier' }, [
-        el('span', { class: 'tier-dot', 'aria-hidden': 'true' }),
-        document.createTextNode(tier.label || 'Partner')
-      ])
+      el('p', { class: 'agency', text: agent.agency || 'Real estate partner' })
     ])
   );
 
-  app.append(
-    el('section', { class: 'section' }, [
-      el('h2', { text: 'Schedule Next Inspection' }),
-      el('div', { class: 'actions' }, [
-        el('a', { class: 'action', href: company.bookingUrl, target: '_blank', rel: 'noopener' }, [
-          el('strong', { text: 'Online' }),
-          el('span', { text: company.bookingUrl })
-        ]),
-        el('a', { class: 'action', href: `tel:${company.phone.replace(/[^\d+]/g, '')}` }, [
-          el('strong', { text: 'Call or Text' }),
-          el('span', { text: company.phone })
-        ]),
-        // el('a', { class: 'action', href: company.whatsappUrl, target: '_blank', rel: 'noopener' }, [
-        //   el('strong', { text: 'Message' }),
-        //   el('span', { text: 'Start a quick conversation' })
-        // ]),
-        // el('a', { class: 'action', href: company.website, target: '_blank', rel: 'noopener' }, [
-        //   el('strong', { text: 'Website' }),
-        //   el('span', { text: 'View services and resources' })
-        // ])
-      ])
-    ])
-  );
-
+  // Relationship Snapshot Metrics
   app.append(
     el('section', { class: 'section' }, [
       el('h2', { text: 'Relationship Snapshot' }),
@@ -130,83 +151,78 @@ function renderDashboard(data) {
     ])
   );
 
-  // app.append(
-  //   el('section', { class: 'section' }, [
-  //     el('h2', { text: 'Partnership' }),
-  //     el('div', { class: 'partnership' }, [
-  //       el('div', { class: 'partnership-row' }, [
-  //         el('span', { text: fmtDate(stats.firstInspection) || 'Start' }),
-  //         el('span', { text: fmtDate(stats.lastInspection) || 'Present' })
-  //       ]),
-  //       el('div', { class: 'bar', 'aria-hidden': 'true' }, [el('span')]),
-  //       el('p', {
-  //         class: 'privacy-note',
-  //         text: portalModeCopy.modeNotice(data.meta?.mode)
-  //       })
-  //     ])
-  //   ])
-  // );
+  // Categorize into Upcoming, In Progress, and Completed
+  const { upcoming, inProgress, completed } = categorizeInspections(inspections);
 
-  // const timeline = el('div', { class: 'timeline' });
-  // for (const inspection of inspections) {
-  //   const date = monthDay(inspection.date);
-  //   timeline.append(
-  //     el('article', { class: 'timeline-item' }, [
-  //       el('div', { class: 'date' }, [
-  //         document.createTextNode(date.month),
-  //         el('span', { text: date.day })
-  //       ]),
-  //       el('div', {}, [
-  //         el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
-  //         el('p', {
-  //           class: 'inspection-meta',
-  //           text: `${inspection.services}`
-  //         })
-  //       ])
-  //     ])
-  //   );
-  // }
-
-  // app.append(
-  //   el('section', { class: 'section' }, [
-  //     el('h2', { text: 'Inspection History' }),
-  //     timeline
-  //   ])
-  // );
-
-  // --- REPLACED TIMELINE CODE STARTS HERE ---
-
-  // Separate inspections into upcoming/incomplete vs. past based on finished status
-  const upcomingInspections = inspections.filter(insp => !insp.finished);
-  const pastInspections = inspections.filter(insp => insp.finished);
-
-  // Helper to construct a timeline section
-  function buildTimeline(list) {
+  // Timeline Builder for 3 Stages
+  function buildTimeline(list, stageClass, showDetails = false) {
     const timelineEl = el('div', { class: 'timeline' });
     for (const inspection of list) {
-      const date = monthDay(inspection.date);
+      const date = monthDay(inspection.rawDatetime || inspection.date);
+      
+      const dateBadge = el('div', { class: `date badge-date ${stageClass}` }, [
+        document.createTextNode(date.month),
+        el('span', { text: date.day })
+      ]);
+
+      const detailsEl = el('div', { class: 'inspection-details' }, [
+        el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
+        el('p', { class: 'inspection-meta', text: inspection.services })
+      ]);
+
+      // Timeline breakdown for Upcoming & In Progress stages
+      if (showDetails) {
+        const mainStart = inspection.rawDatetime ? new Date(inspection.rawDatetime) : null;
+        const mainTimeFormatted = mainStart && !isNaN(mainStart.getTime())
+          ? mainStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+          : 'Scheduled';
+
+        const timelineItems = [
+          el('div', { class: 'timeline-row' }, [
+            el('span', { class: 'dot main-dot' }),
+            el('span', { class: 'timeline-label', text: 'Main Inspection: ' }),
+            el('span', { class: 'timeline-val', text: `${mainTimeFormatted} (${inspection.durationHours || 2} hrs)` })
+          ])
+        ];
+
+        const subs = parseSubcontractorEntries(inspection.subcontractorSchedule);
+        for (const sub of subs) {
+          const isPending = sub.scheduleStr.toLowerCase() === 'pending';
+          timelineItems.push(
+            el('div', { class: 'timeline-row' }, [
+              el('span', { class: 'dot sub-dot' }),
+              el('span', { class: 'timeline-label', text: `${sub.service}: ` }),
+              el('span', { class: `timeline-val ${isPending ? 'is-pending' : ''}`, text: sub.scheduleStr })
+            ])
+          );
+        }
+
+        detailsEl.append(el('div', { class: 'timeline-sub-block' }, timelineItems));
+      }
+
       timelineEl.append(
         el('article', { class: 'timeline-item' }, [
-          el('div', { class: 'date' }, [
-            document.createTextNode(date.month),
-            el('span', { text: date.day })
-          ]),
-          el('div', {}, [
-            el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
-            el('p', {
-              class: 'inspection-meta',
-              text: inspection.services
-            })
-          ])
+          dateBadge,
+          detailsEl
         ])
       );
     }
     return timelineEl;
   }
 
-  // 1. Upcoming / Active Inspections Section
-  const upcomingContent = upcomingInspections.length > 0
-    ? buildTimeline(upcomingInspections)
+  // 1. IN PROGRESS SECTION
+  if (inProgress.length > 0) {
+    app.append(
+      el('section', { class: 'section' }, [
+        el('h2', { text: 'In Progress' }),
+        buildTimeline(inProgress, 'badge-in-progress', true)
+      ])
+    );
+  }
+
+  // 2. UPCOMING INSPECTIONS SECTION
+  const upcomingContent = upcoming.length > 0
+    ? buildTimeline(upcoming, 'badge-upcoming', true)
     : el('div', { class: 'empty-state' }, [
         el('p', { text: 'No upcoming inspections scheduled.' }),
         el('a', {
@@ -225,18 +241,17 @@ function renderDashboard(data) {
     ])
   );
 
-  // 2. Past Inspections Section
-  if (pastInspections.length > 0) {
+  // 3. COMPLETED INSPECTIONS SECTION
+  if (completed.length > 0) {
     app.append(
       el('section', { class: 'section' }, [
-        el('h2', { text: 'Past Inspections' }),
-        buildTimeline(pastInspections)
+        el('h2', { text: 'Completed Inspections' }),
+        buildTimeline(completed, 'badge-completed', false)
       ])
     );
   }
 
-  // --- REPLACED TIMELINE CODE ENDS HERE --- 
-
+  // Footer
   app.append(
     el('footer', { class: 'footer' }, [
       document.createTextNode(`${company.license} | ${company.website}`)
