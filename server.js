@@ -280,6 +280,7 @@ function mapInspection(insp, included = []) {
     }
   }
 
+  // Collect linked custom field IDs from inspection relationships
   const relFieldData = insp?.relationships?.custom_fields?.data || [];
   const linkedIds = new Set(
     Array.isArray(relFieldData) ? relFieldData.map(item => String(item.id)) : []
@@ -291,32 +292,43 @@ function mapInspection(insp, included = []) {
 
   if (Array.isArray(included) && included.length > 0) {
     for (const item of included) {
-      if (item && item.type === 'custom_field') {
-        const itemAttrs = item.attributes || {};
-        const tplId = Number(itemAttrs.custom_field_template_id);
-        const identifier = String(itemAttrs.identifier || '').toLowerCase();
-        const name = String(itemAttrs.name || '').toLowerCase();
+      if (!item || item.type !== 'custom_field') continue;
 
-        // Match template ID 47540 or name/identifier 'Finished'
-        if (
-          tplId === 47540 ||
-          identifier === 'finished' ||
-          name === 'finished'
-        ) {
-          foundFinishedField = true;
-          const val = itemAttrs.value;
-          isFinished = val === '1' || val === 1 || val === true || val === 'true';
-        }
+      const itemAttrs = item.attributes || {};
+      const itemId = String(item.id || '');
+      const itemInspId = String(itemAttrs.inspection_id || item.relationships?.inspection?.data?.id || '');
 
-        // Match template ID 54966 or name/identifier 'Subcontractor Schedule'
-        if (
-          tplId === 54966 ||
-          identifier === 'subcontractorschedule' ||
-          name === 'subcontractor schedule'
-        ) {
-          if (itemAttrs.value) {
-            subcontractorSchedule = String(itemAttrs.value).trim();
-          }
+      // Check if this custom field belongs to this inspection
+      const belongsToThisInspection =
+        linkedIds.has(itemId) ||
+        (itemInspId && itemInspId === String(insp.id)) ||
+        linkedIds.size === 0; // fallback if relationship array is omitted upstream
+
+      if (!belongsToThisInspection) continue;
+
+      const tplId = Number(itemAttrs.custom_field_template_id);
+      const identifier = String(itemAttrs.identifier || '').toLowerCase();
+      const name = String(itemAttrs.name || '').toLowerCase();
+
+      // Match template ID 47540 or name/identifier 'Finished'
+      if (
+        tplId === 47540 ||
+        identifier === 'finished' ||
+        name === 'finished'
+      ) {
+        foundFinishedField = true;
+        const val = itemAttrs.value;
+        isFinished = val === '1' || val === 1 || val === true || val === 'true';
+      }
+
+      // Match template ID 54966 or name/identifier 'Subcontractor Schedule'
+      if (
+        tplId === 54966 ||
+        identifier === 'subcontractorschedule' ||
+        name === 'subcontractor schedule'
+      ) {
+        if (itemAttrs.value) {
+          subcontractorSchedule = String(itemAttrs.value).trim();
         }
       }
     }
