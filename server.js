@@ -111,15 +111,15 @@ function createConfig(env = process.env) {
       bookingUrl: validatedHttpsUrl('https://www.inspectmhk.com/schedule-now', 'BOOKING_URL'),
       whatsappUrl: '/',
       brand: {
-        primary: validatedColor('#B39658', 'BRAND_PRIMARY_COLOR'),
-        accentText: validatedColor(env.BRAND_ACCENT_TEXT_COLOR, 'BRAND_ACCENT_TEXT_COLOR'),
-        ink: validatedColor(env.BRAND_INK_COLOR, 'BRAND_INK_COLOR'),
-        muted: validatedColor(env.BRAND_MUTED_COLOR, 'BRAND_MUTED_COLOR'),
-        surface: validatedColor(env.BRAND_SURFACE_COLOR, 'BRAND_SURFACE_COLOR'),
-        background: validatedColor(env.BRAND_BACKGROUND_COLOR, 'BRAND_BACKGROUND_COLOR'),
-        border: validatedColor(env.BRAND_BORDER_COLOR, 'BRAND_BORDER_COLOR'),
-        success: validatedColor(env.BRAND_SUCCESS_COLOR, 'BRAND_SUCCESS_COLOR'),
-        focus: validatedColor(env.BRAND_FOCUS_COLOR, 'BRAND_FOCUS_COLOR')
+        primary: validatedColor(env.BRAND_PRIMARY_COLOR || '#D4AF37', 'BRAND_PRIMARY_COLOR'),
+        accentText: validatedColor(env.BRAND_ACCENT_TEXT_COLOR || '#C8A251', 'BRAND_ACCENT_TEXT_COLOR'),
+        ink: validatedColor(env.BRAND_INK_COLOR || '#FFFFFF', 'BRAND_INK_COLOR'),
+        muted: validatedColor(env.BRAND_MUTED_COLOR || '#A0A0A8', 'BRAND_MUTED_COLOR'),
+        surface: validatedColor(env.BRAND_SURFACE_COLOR || '#1A1A1E', 'BRAND_SURFACE_COLOR'),
+        background: validatedColor(env.BRAND_BACKGROUND_COLOR || '#0B0B0B', 'BRAND_BACKGROUND_COLOR'),
+        border: validatedColor(env.BRAND_BORDER_COLOR || '#2A2A30', 'BRAND_BORDER_COLOR'),
+        success: validatedColor(env.BRAND_SUCCESS_COLOR || '#22C55E', 'BRAND_SUCCESS_COLOR'),
+        focus: validatedColor(env.BRAND_FOCUS_COLOR || '#2563EB', 'BRAND_FOCUS_COLOR')
       }
     },
     demoAgent: {
