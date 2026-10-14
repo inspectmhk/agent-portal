@@ -20,11 +20,21 @@ function fmtDate(value) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
-function monthDay(value) {
-  const date = new Date(`${value}T00:00:00`);
+function monthDay(dateString) {
+  if (!dateString) return { month: 'TBD', day: '--' };
+  
+  // Normalize string format and extract date
+  const cleanStr = String(dateString).replace(/[\u2010-\u2015]/g, '-').trim();
+  const dateObj = new Date(cleanStr.includes('T') ? cleanStr : `${cleanStr}T00:00:00`);
+
+  if (isNaN(dateObj.getTime())) {
+    return { month: 'TBD', day: '--' };
+  }
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return {
-    month: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date),
-    day: new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(date)
+    month: months[dateObj.getMonth()],
+    day: String(dateObj.getDate())
   };
 }
 
@@ -81,21 +91,22 @@ function categorizeInspections(inspections) {
   const inProgress = [];
   const completed = [];
 
-  for (const insp of inspections) {
+  for (const insp of inspections || []) {
     if (insp.finished) {
       completed.push(insp);
       continue;
     }
 
-    const dateVal = insp.rawDatetime || insp.date;
-    const startDate = dateVal ? new Date(dateVal) : null;
-    
+    const raw = insp.rawDatetime || insp.date;
+    const cleanStr = raw ? String(raw).replace(/[\u2010-\u2015]/g, '-').trim() : '';
+    const startDate = cleanStr ? new Date(cleanStr.includes('T') ? cleanStr : `${cleanStr}T00:00:00`) : null;
+
     if (!startDate || isNaN(startDate.getTime())) {
       upcoming.push(insp);
       continue;
     }
 
-    const endDate = new Date(startDate.getTime() + (insp.durationHours || 2) * 3600000);
+    const endDate = new Date(startDate.getTime() + (Number(insp.durationHours) || 2) * 3600000);
 
     if (now >= startDate && now <= endDate) {
       inProgress.push(insp);
@@ -156,27 +167,27 @@ function renderDashboard(data) {
   const { upcoming, inProgress, completed } = categorizeInspections(inspections);
 
   // Timeline Builder for 3 Stages
-function buildTimeline(list, stageClass, showDetails = false) {
+  function buildTimeline(list, stageClass, showDetails = false) {
     const timelineEl = el('div', { class: 'timeline' });
     for (const inspection of list) {
-      // Safe fallback string to prevent "Invalid time value" in monthDay
-      const validDateStr = inspection.rawDatetime || inspection.date || new Date().toISOString();
-      const date = monthDay(validDateStr);
+      const date = monthDay(inspection.rawDatetime || inspection.date);
       
       const dateBadge = el('div', { class: `date badge-date ${stageClass}` }, [
-        document.createTextNode(date.month || 'TBD'),
-        el('span', { text: date.day || '--' })
+        document.createTextNode(date.month),
+        el('span', { text: date.day })
       ]);
 
       const detailsEl = el('div', { class: 'inspection-details' }, [
-        el('p', { class: 'inspection-title', text: inspection.location || inspection.address }),
-        el('p', { class: 'inspection-meta', text: inspection.services })
+        el('p', { class: 'inspection-title', text: inspection.location || inspection.address || 'Location withheld' }),
+        el('p', { class: 'inspection-meta', text: inspection.services || '' })
       ]);
 
       if (showDetails) {
         const raw = inspection.rawDatetime || inspection.date;
-        const mainStart = raw ? new Date(raw) : null;
+        const cleanStr = raw ? String(raw).replace(/[\u2010-\u2015]/g, '-').trim() : '';
+        const mainStart = cleanStr ? new Date(cleanStr.includes('T') ? cleanStr : `${cleanStr}T00:00:00`) : null;
         const isValidDate = mainStart && !isNaN(mainStart.getTime());
+        
         const mainTimeFormatted = isValidDate
           ? mainStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
           : 'Scheduled';
@@ -213,7 +224,7 @@ function buildTimeline(list, stageClass, showDetails = false) {
     }
     return timelineEl;
   }
-  
+
   // 1. IN PROGRESS SECTION
   if (inProgress.length > 0) {
     app.append(
