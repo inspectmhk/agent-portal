@@ -72,15 +72,19 @@ function applyBrand(company) {
   if (theme) theme.setAttribute('content', company.brand.primary);
 }
 
-// Parse subcontractor string: "Sewer: 10/25 [8am-10am], Radon: Pending"
 function parseSubcontractorEntries(rawString) {
   if (!rawString) return [];
-  const items = rawString.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+  // Split on semicolons first, then fallback to commas if needed
+  const items = rawString.split(/;|\n/).map(s => s.trim()).filter(Boolean);
   
   return items.map(item => {
-    const parts = item.split(':').map(p => p.trim());
-    if (parts.length < 2) return { service: 'Subcontractor', scheduleStr: item };
-    return { service: parts[0], scheduleStr: parts.slice(1).join(':').trim() };
+    const colonIdx = item.indexOf(':');
+    if (colonIdx === -1) {
+      return { service: 'Subcontractor', scheduleStr: item };
+    }
+    const service = item.slice(0, colonIdx).trim();
+    const scheduleStr = item.slice(colonIdx + 1).trim();
+    return { service, scheduleStr };
   });
 }
 
@@ -182,55 +186,63 @@ function renderDashboard(data) {
   const { upcoming, inProgress, completed } = categorizeInspections(inspections);
 
   function buildTimeline(list, stageClass, showDetails = false) {
-    const timelineEl = el('div', { class: 'timeline' });
-    for (const inspection of list) {
-      const date = monthDay(inspection.rawDatetime || inspection.date);
-      
-      const dateBadge = el('div', { class: `date badge-date ${stageClass}` }, [
-        document.createTextNode(date.month),
-        el('span', { text: date.day })
-      ]);
+  const timelineEl = el('div', { class: 'timeline' });
+  for (const inspection of list) {
+    const date = monthDay(inspection.rawDatetime || inspection.date);
+    
+    const dateBadge = el('div', { class: `date badge-date ${stageClass}` }, [
+      document.createTextNode(date.month),
+      el('span', { text: date.day })
+    ]);
 
-      const detailsEl = el('div', { class: 'inspection-details' }, [
-        el('p', { class: 'inspection-title', text: inspection.location || inspection.address || 'Location withheld' }),
-        el('p', { class: 'inspection-meta', text: inspection.services || '' })
-      ]);
+    const detailsEl = el('div', { class: 'inspection-details' }, [
+      el('p', { class: 'inspection-title', text: inspection.location || inspection.address || 'Location withheld' }),
+      el('p', { class: 'inspection-meta', text: inspection.services || '' })
+    ]);
 
-      if (showDetails) {
-        const timeWindow = formatTimeWindow(inspection.rawDatetime, inspection.durationHours);
+    if (showDetails) {
+      const timeWindow = formatTimeWindow(inspection.rawDatetime, inspection.durationHours);
 
-        const timelineItems = [
-          el('div', { class: 'timeline-row' }, [
-            el('span', { class: 'dot main-dot' }),
-            el('span', { class: 'timeline-label', text: 'Main Inspection: ' }),
-            el('span', { class: 'timeline-val', text: timeWindow })
-          ])
-        ];
+      const timelineItems = [
+        el('div', { class: 'timeline-row' }, [
+          el('span', { class: 'dot main-dot' }),
+          el('span', { class: 'timeline-label', text: 'Main Inspection: ' }),
+          el('span', { class: 'timeline-val', text: timeWindow })
+        ])
+      ];
 
-        const subs = parseSubcontractorEntries(inspection.subcontractorSchedule);
-        for (const sub of subs) {
-          const isPending = sub.scheduleStr.toLowerCase() === 'pending';
-          timelineItems.push(
-            el('div', { class: 'timeline-row' }, [
-              el('span', { class: 'dot sub-dot' }),
-              el('span', { class: 'timeline-label', text: `${sub.service}: ` }),
-              el('span', { class: `timeline-val ${isPending ? 'is-pending' : ''}`, text: sub.scheduleStr })
-            ])
-          );
+      const subs = parseSubcontractorEntries(inspection.subcontractorSchedule);
+      for (const sub of subs) {
+        const valLower = sub.scheduleStr.toLowerCase();
+        let statusClass = 'status-default';
+        
+        if (valLower.includes('pending')) {
+          statusClass = 'is-pending';
+        } else if (valLower.includes('complete')) {
+          statusClass = 'is-complete';
         }
 
-        detailsEl.append(el('div', { class: 'timeline-sub-block' }, timelineItems));
+        timelineItems.push(
+          el('div', { class: 'timeline-row' }, [
+            el('span', { class: 'dot sub-dot' }),
+            el('span', { class: 'timeline-label', text: `${sub.service}: ` }),
+            el('span', { class: `timeline-val ${statusClass}`, text: sub.scheduleStr })
+          ])
+        );
       }
 
-      timelineEl.append(
-        el('article', { class: 'timeline-item' }, [
-          dateBadge,
-          detailsEl
-        ])
-      );
+      detailsEl.append(el('div', { class: 'timeline-sub-block' }, timelineItems));
     }
-    return timelineEl;
+
+    timelineEl.append(
+      el('article', { class: 'timeline-item' }, [
+        dateBadge,
+        detailsEl
+      ])
+    );
   }
+  return timelineEl;
+}
 
   // 1. IN PROGRESS SECTION (Only if items exist)
   if (inProgress.length > 0) {
