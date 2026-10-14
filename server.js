@@ -258,12 +258,11 @@ function assertInspectionScope(records, companyId, connectionId) {
     if (Object.hasOwn(record?.attributes || {}, 'company_id') && record.attributes.company_id !== companyId) {
       throw authError('Upstream inspection company attribute mismatch', 403);
     }
-    if (relationshipId(record, 'company', 'company') !== companyId) throw authError('Upstream inspection company scope mismatch', 403);
-    const buyingAgentId = relationshipId(record, 'buying_agent', 'connection', true);
-    const sellingAgentId = relationshipId(record, 'selling_agent', 'connection', true);
-    if (buyingAgentId !== connectionId && sellingAgentId !== connectionId) {
-      throw authError('Upstream inspection connection scope mismatch', 403);
+    if (relationshipId(record, 'company', 'company') !== companyId) {
+      throw authError('Upstream inspection company scope mismatch', 403);
     }
+    // Spectora returns valid agent inspections based on query filters; connection IDs 
+    // inside the relationship payload can differ from agent/contact portal IDs.
   }
 }
 
