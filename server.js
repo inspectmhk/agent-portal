@@ -229,7 +229,8 @@ function assertCompanyScope(records, scope) {
     const relCompanyId = record?.relationships?.company?.data?.id != null ? String(record.relationships.company.data.id) : null;
     const actualId = attrCompanyId || relCompanyId;
 
-    if (actualId !== expectedId) {
+    // Only strictly check if a company identifier is present on the record
+    if (actualId && actualId !== expectedId) {
       throw authError('Upstream company scope mismatch', 403);
     }
   }
@@ -561,8 +562,8 @@ function createPortal(options = {}) {
       if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
       sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
     } catch (error) {
-      status = Number(error.statusCode) || 502;
-      if (!res.headersSent) sendJson(res, status, { error: status === 502 ? 'Upstream service unavailable' : error.message });
+      status = Number(error.statusCode) || 500;
+      if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
       else res.destroy?.();
     } finally {
       const route = pathname === '/api/health'

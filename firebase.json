@@ -10,7 +10,10 @@
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "run": {
+          "serviceId": "agent-portal-staging",
+          "region": "us-central1"
+        }
       }
     ]
   }
