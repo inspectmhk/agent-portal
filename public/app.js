@@ -120,13 +120,29 @@ function categorizeInspections(inspections) {
   return { upcoming, inProgress, completed };
 }
 
+// Helper to format start time + duration into an explicit time window
+function formatTimeWindow(startIso, durationHours) {
+  if (!startIso) return 'Scheduled';
+  const start = new Date(startIso);
+  if (isNaN(start.getTime())) return 'Scheduled';
+
+  const durationMs = (Number(durationHours) || 2) * 3600000;
+  const end = new Date(start.getTime() + durationMs);
+
+  const formatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+  const startTimeStr = start.toLocaleTimeString('en-US', formatOptions);
+  const endTimeStr = end.toLocaleTimeString('en-US', formatOptions);
+
+  return `${startTimeStr} - ${endTimeStr}`;
+}
+
 function renderDashboard(data) {
   const { company, agent, stats, tier, inspections } = data;
   applyBrand(company);
   document.title = `${agent.firstName} ${agent.lastName} | ${company.appName}`;
   app.replaceChildren();
 
-  // Topbar Header
+  // Topbar
   app.append(
     el('header', { class: 'topbar' }, [
       el('div', { class: 'brand-lockup' }, [
@@ -163,10 +179,8 @@ function renderDashboard(data) {
     ])
   );
 
-  // Categorize into Upcoming, In Progress, and Completed
   const { upcoming, inProgress, completed } = categorizeInspections(inspections);
 
-  // Timeline Builder for 3 Stages
   function buildTimeline(list, stageClass, showDetails = false) {
     const timelineEl = el('div', { class: 'timeline' });
     for (const inspection of list) {
@@ -183,20 +197,13 @@ function renderDashboard(data) {
       ]);
 
       if (showDetails) {
-        const raw = inspection.rawDatetime || inspection.date;
-        const cleanStr = raw ? String(raw).replace(/[\u2010-\u2015]/g, '-').trim() : '';
-        const mainStart = cleanStr ? new Date(cleanStr.includes('T') ? cleanStr : `${cleanStr}T00:00:00`) : null;
-        const isValidDate = mainStart && !isNaN(mainStart.getTime());
-        
-        const mainTimeFormatted = isValidDate
-          ? mainStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-          : 'Scheduled';
+        const timeWindow = formatTimeWindow(inspection.rawDatetime, inspection.durationHours);
 
         const timelineItems = [
           el('div', { class: 'timeline-row' }, [
             el('span', { class: 'dot main-dot' }),
             el('span', { class: 'timeline-label', text: 'Main Inspection: ' }),
-            el('span', { class: 'timeline-val', text: `${mainTimeFormatted} (${inspection.durationHours || 2} hrs)` })
+            el('span', { class: 'timeline-val', text: timeWindow })
           ])
         ];
 
@@ -225,7 +232,7 @@ function renderDashboard(data) {
     return timelineEl;
   }
 
-  // 1. IN PROGRESS SECTION
+  // 1. IN PROGRESS SECTION (Only if items exist)
   if (inProgress.length > 0) {
     app.append(
       el('section', { class: 'section' }, [
@@ -235,33 +242,40 @@ function renderDashboard(data) {
     );
   }
 
-  // 2. UPCOMING INSPECTIONS SECTION
-  const upcomingContent = upcoming.length > 0
-    ? buildTimeline(upcoming, 'badge-upcoming', true)
-    : el('div', { class: 'empty-state' }, [
-        el('p', { text: 'No upcoming inspections scheduled.' }),
-        el('a', {
-          class: 'action-link',
-          href: company.bookingUrl,
-          target: '_blank',
-          rel: 'noopener',
-          text: 'Schedule an Inspection'
-        })
-      ]);
+  // 2. UPCOMING INSPECTIONS SECTION (Only if items exist)
+  if (upcoming.length > 0) {
+    app.append(
+      el('section', { class: 'section' }, [
+        el('h2', { text: 'Upcoming Inspections' }),
+        buildTimeline(upcoming, 'badge-upcoming', true)
+      ])
+    );
+  }
 
-  app.append(
-    el('section', { class: 'section' }, [
-      el('h2', { text: 'Upcoming Inspections' }),
-      upcomingContent
-    ])
-  );
-
-  // 3. COMPLETED INSPECTIONS SECTION
+  // 3. COMPLETED INSPECTIONS SECTION (Only if items exist)
   if (completed.length > 0) {
     app.append(
       el('section', { class: 'section' }, [
         el('h2', { text: 'Completed Inspections' }),
         buildTimeline(completed, 'badge-completed', false)
+      ])
+    );
+  }
+
+  // 4. GLOBAL EMPTY STATE (Only if no inspections exist across all 3 stages)
+  if (inProgress.length === 0 && upcoming.length === 0 && completed.length === 0) {
+    app.append(
+      el('section', { class: 'section' }, [
+        el('div', { class: 'empty-state' }, [
+          el('p', { text: 'No inspections scheduled yet.' }),
+          el('a', {
+            class: 'action-link',
+            href: company.bookingUrl,
+            target: '_blank',
+            rel: 'noopener',
+            text: 'Schedule an Inspection'
+          })
+        ])
       ])
     );
   }
