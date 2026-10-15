@@ -705,25 +705,25 @@ function createPortal(options = {}) {
   }
 
   async function getPublicInspectionBySlug(slug, upstreamGet) {
-  if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
+    if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
 
-  try {
-    // Pass page[size]=1 to prevent Spectora from scanning large result sets
-    const endpoint = query('/v2/inspections', {
-      'filter[slug]': slug,
-      'include': 'custom_fields',
-      'page[size]': '1'
-    });
+    try {
+      // Query direct inspection endpoint: /v2/inspections/:slug
+      const endpoint = query(`/v2/inspections/${slug}`, {
+        'include': 'custom_fields'
+      });
 
-    const response = await upstreamGet(endpoint);
-    const data = response.data || [];
-    if (!data.length) return null;
+      const response = await upstreamGet(endpoint);
+      
+      // Direct endpoint returns the single object in response.data (or response.data[0])
+      const inspection = Array.isArray(response.data) ? response.data[0] : response.data;
+      if (!inspection) return null;
 
-    return mapPublicStatusInspection(data[0], response.included || []);
-  } catch (err) {
-    return null;
+      return mapPublicStatusInspection(inspection, response.included || []);
+    } catch (err) {
+      return null;
+    }
   }
-}
 
   async function handleRequest(req, res) {
     const startedAt = nowMs();
