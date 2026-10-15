@@ -149,14 +149,10 @@ body.status-body {
 
 .status-row {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline; /* Align dot perfectly with text baseline */
   margin-bottom: 10px;
   font-size: 0.875rem;
   line-height: 1.4;
-}
-
-.status-row:last-child {
-  margin-bottom: 0;
 }
 
 .status-dot {
@@ -167,6 +163,12 @@ body.status-body {
   display: inline-block;
   margin-right: 10px;
   flex-shrink: 0;
+  position: relative;
+  top: -1px; /* Subtle optical alignment adjustment for round dot */
+}
+
+.status-row:last-child {
+  margin-bottom: 0;
 }
 
 .status-label {

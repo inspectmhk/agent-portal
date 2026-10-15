@@ -631,7 +631,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Status: ${data.location} | ${branding.name}</title>
-  <link rel="stylesheet" href="/status.css">
+  <link rel="stylesheet" href="/status.css?123">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
