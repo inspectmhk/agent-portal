@@ -459,237 +459,6 @@ function loadStaticSnapshot(publicDir) {
   return files;
 }
 
-function createPortal(options = {}) {
-  const config = createConfig(options.env || process.env);
-  const staticFiles = loadStaticSnapshot(options.publicDir || PUBLIC_DIR);
-  const nowSeconds = options.now || (() => Math.floor(Date.now() / 1000));
-  const nowMs = options.nowMs || Date.now;
-  const upstreamGet = options.upstreamGet || createHttpsUpstream(config);
-  const log = options.log || (entry => process.stdout.write(`${JSON.stringify(entry)}\n`));
-  const allowRequest = createRateLimiter(config, nowMs);
-
-  async function getAgentPayload(connectionId) {
-    const sample = applyCustomization(readSampleAgent(), config.branding, config.demoAgent, config.demoTier);
-    if (config.mode === 'demo') return { ...sample, meta: { mode: 'demo' } };
-    const scope = config.companyId;
-    let connections;
-    try {
-      connections = await upstreamGet(`/v2/connections/${encodeURIComponent(connectionId)}`);
-    } catch (error) {
-      if (error instanceof UpstreamHttpError && error.upstreamStatus === 404) return null;
-      throw error;
-    }
-    const connection = connections.data;
-    assertRecordId(connection, connectionId, 'connection');
-    assertCompanyScope([connection], scope);
-    
-    const stats = await upstreamGet(query('/v2/connection_stats', {
-      'filter[id]': connectionId, 'page[size]': '1'
-    }));
-    if (!Array.isArray(stats.data)) throw authError('Upstream stats data missing', 403);
-
-    const statRecord = stats.data[0] || {
-      id: connectionId,
-      type: 'connection_stat',
-      attributes: {
-        company_id: Number(scope),
-        buying_inspections_count: 0,
-        selling_inspections_count: 0,
-        total_inspections_count: 0,
-        first_inspection_date: null,
-        last_inspection_date: null
-      }
-    };
-
-    if (stats.data.length > 0) {
-      assertRecordId(statRecord, connectionId, 'stats');
-      assertCompanyScope([statRecord], scope);
-    }
-    
-    const inspections = await upstreamGet(query('/v2/inspections', {
-      'filter[connection_id]': connectionId, include: 'buying_agent,selling_agent,company,custom_fields', sort: '-datetime', 'page[size]': '50'
-    }));
-    if (!Array.isArray(inspections.data)) throw authError('Upstream inspections data missing', 403);
-    assertInspectionScope(inspections.data, scope, connectionId);
-    const attrs = connection.attributes || {};
-    const statAttrs = statRecord.attributes || {};
-    
-    return {
-      meta: { mode: 'live' },
-      company: sample.company,
-      agent: {
-        firstName: attrs.first_name || '',
-        lastName: attrs.last_name || '',
-        agency: attrs.agency_name || '',
-        city: attrs.city || '',
-        state: attrs.state || '',
-        photoUrl: attrs.image || attrs.thumb || sample.agent.photoUrl
-      },
-      stats: {
-        totalInspections: Number(statAttrs.total_inspections_count || attrs.total_inspections_count || 0),
-        buyingInspections: Number(statAttrs.buying_inspections_count || 0),
-        sellingInspections: Number(statAttrs.selling_inspections_count || 0),
-        firstInspection: statAttrs.first_inspection_date ? String(statAttrs.first_inspection_date).replace(/[\u2010-\u2015]/g, '-').slice(0, 10) : null,
-        lastInspection: statAttrs.last_inspection_date ? String(statAttrs.last_inspection_date).replace(/[\u2010-\u2015]/g, '-').slice(0, 10) : null,
-        overallCount: Number(statAttrs.overall_inspections_count || 0)
-      },
-      tier: sample.tier,
-      inspections: (inspections.data || []).map(insp => mapInspection(insp, inspections.included || []))
-    };
-  }
-
-  function sendStatic(res, pathname) {
-    const requested = pathname === '/' || pathname.startsWith('/agent/') ? '/index.html' : pathname;
-    let decoded;
-    try { decoded = decodeURIComponent(requested); } catch { sendJson(res, 400, { error: 'Malformed URL' }); return; }
-    if (decoded.includes('\0') || decoded.includes('\\') || decoded.split('/').includes('..')) { sendJson(res, 403, { error: 'Forbidden' }); return; }
-    const file = staticFiles.get(path.posix.normalize(decoded));
-    if (!file) { sendJson(res, 404, { error: 'Not found' }); return; }
-    res.writeHead(200, headers({
-      'Content-Type': file.contentType,
-      'Cache-Control': file.cacheControl
-    }));
-    res.end(file.body);
-  }
-
-//   async function handleRequest(req, res) {
-//     const startedAt = nowMs();
-//     let pathname = '<malformed>';
-//     let status = 500;
-//     try {
-//       let url;
-//       try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
-//       pathname = url.pathname;
-//       if (req.method === 'GET' && pathname === '/api/health') {
-//         sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
-//       }
-//       if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
-//         const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
-//         if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
-//         if (config.mode === 'live') {
-//           let grant;
-//           try {
-//             validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
-//             grant = bearerToken(req);
-//             verifyGrant(grant, connectionId, config.signingSecret, { now: nowSeconds() });
-//           }
-//           catch (error) { status = error.statusCode || 401; sendJson(res, status, { error: error.message }); return; }
-//           const key = crypto.createHash('sha256').update(`${grant}:${connectionId}`).digest('hex');
-//           if (!allowRequest(key)) { sendJson(res, 429, { error: 'Rate limit exceeded' }); status = 429; return; }
-//         }
-//         const payload = await getAgentPayload(connectionId);
-//         if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
-//         sendJson(res, 200, payload); status = 200; return;
-//       }
-//       if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
-//       sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
-//     } catch (error) {
-//       status = Number(error.statusCode) || 500;
-//       if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
-//       else res.destroy?.();
-//     } finally {
-//       const route = pathname === '/api/health'
-//         ? '/api/health'
-//         : (pathname.startsWith('/api/agent/')
-//             ? '/api/agent/:id'
-//             : (pathname.startsWith('/agent/') ? '/agent/:id' : '/:static-or-not-found'));
-//       log({ method: req.method, route, status, durationMs: Math.max(0, nowMs() - startedAt) });
-//     }
-//   }
-
-//   return { config, handleRequest, getAgentPayload };
-// }
-
-async function handleRequest(req, res) {
-    const startedAt = nowMs();
-    let pathname = '<malformed>';
-    let status = 500;
-    try {
-      let url;
-      try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
-      pathname = url.pathname;
-
-      const host = String(req.headers.host || '').toLowerCase();
-      const isStatusSubdomain = host.startsWith('status.');
-      const slugMatch = pathname.match(/^\/(?:status\/)?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
-
-      // 1. PUBLIC STATUS ROUTE (status.inspectmhk.com or /status/:slug or /:slug)
-      if (req.method === 'GET' && (isStatusSubdomain || slugMatch)) {
-        const slug = slugMatch ? slugMatch[1] : pathname.slice(1).replace(/^status\//, '');
-        
-        if (slug) {
-          const data = await getPublicInspectionBySlug(slug, upstreamGet);
-          const html = renderPublicStatusHtml(data, config.branding);
-          status = data ? 200 : 404;
-          res.writeHead(status, headers({
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'public, max-age=60'
-          }));
-          res.end(html);
-          return;
-        }
-      }
-
-      // 2. HEALTH CHECK ROUTE
-      if (req.method === 'GET' && pathname === '/api/health') {
-        sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
-      }
-
-      // 3. AGENT PORTAL API ROUTE
-      if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
-        const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
-        if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
-        if (config.mode === 'live') {
-          let grant;
-          try {
-            validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
-            grant = bearerToken(req);
-            verifyGrant(grant, connectionId, config.signingSecret, { now: nowSeconds() });
-          }
-          catch (error) { status = error.statusCode || 401; sendJson(res, status, { error: error.message }); return; }
-          const key = crypto.createHash('sha256').update(`${grant}:${connectionId}`).digest('hex');
-          if (!allowRequest(key)) { sendJson(res, 429, { error: 'Rate limit exceeded' }); status = 429; return; }
-        }
-        const payload = await getAgentPayload(connectionId);
-        if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
-        sendJson(res, 200, payload); status = 200; return;
-      }
-
-      // 4. STATIC FILES & SINGLE PAGE APP ROUTE
-      if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
-      sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
-    } catch (error) {
-      status = Number(error.statusCode) || 500;
-      if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
-      else res.destroy?.();
-    } finally {
-      const route = pathname === '/api/health'
-        ? '/api/health'
-        : (pathname.startsWith('/api/agent/')
-            ? '/api/agent/:id'
-            : (pathname.startsWith('/agent/') ? '/agent/:id' : '/:static-or-not-found'));
-      log({ method: req.method, route, status, durationMs: Math.max(0, nowMs() - startedAt) });
-    }
-  }
-
-async function getPublicInspectionBySlug(slug, upstreamGet) {
-  if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
-
-  const endpoint = query('/v2/inspections', {
-    'filter[slug]': slug,
-    'include': 'custom_fields'
-  });
-
-  const response = await upstreamGet(endpoint);
-  const data = response.data || [];
-  if (!data.length) return null;
-
-  const insp = data[0];
-  const included = response.included || [];
-
-  return mapPublicStatusInspection(insp, included);
-}
-
 function mapPublicStatusInspection(insp, included = []) {
   const attrs = insp?.attributes || {};
   let formattedDate = '';
@@ -852,6 +621,237 @@ function renderPublicStatusHtml(data, branding) {
   </div>
 </body>
 </html>`;
+}
+
+function createPortal(options = {}) {
+  const config = createConfig(options.env || process.env);
+  const staticFiles = loadStaticSnapshot(options.publicDir || PUBLIC_DIR);
+  const nowSeconds = options.now || (() => Math.floor(Date.now() / 1000));
+  const nowMs = options.nowMs || Date.now;
+  const upstreamGet = options.upstreamGet || createHttpsUpstream(config);
+  const log = options.log || (entry => process.stdout.write(`${JSON.stringify(entry)}\n`));
+  const allowRequest = createRateLimiter(config, nowMs);
+
+  async function getAgentPayload(connectionId) {
+    const sample = applyCustomization(readSampleAgent(), config.branding, config.demoAgent, config.demoTier);
+    if (config.mode === 'demo') return { ...sample, meta: { mode: 'demo' } };
+    const scope = config.companyId;
+    let connections;
+    try {
+      connections = await upstreamGet(`/v2/connections/${encodeURIComponent(connectionId)}`);
+    } catch (error) {
+      if (error instanceof UpstreamHttpError && error.upstreamStatus === 404) return null;
+      throw error;
+    }
+    const connection = connections.data;
+    assertRecordId(connection, connectionId, 'connection');
+    assertCompanyScope([connection], scope);
+    
+    const stats = await upstreamGet(query('/v2/connection_stats', {
+      'filter[id]': connectionId, 'page[size]': '1'
+    }));
+    if (!Array.isArray(stats.data)) throw authError('Upstream stats data missing', 403);
+
+    const statRecord = stats.data[0] || {
+      id: connectionId,
+      type: 'connection_stat',
+      attributes: {
+        company_id: Number(scope),
+        buying_inspections_count: 0,
+        selling_inspections_count: 0,
+        total_inspections_count: 0,
+        first_inspection_date: null,
+        last_inspection_date: null
+      }
+    };
+
+    if (stats.data.length > 0) {
+      assertRecordId(statRecord, connectionId, 'stats');
+      assertCompanyScope([statRecord], scope);
+    }
+    
+    const inspections = await upstreamGet(query('/v2/inspections', {
+      'filter[connection_id]': connectionId, include: 'buying_agent,selling_agent,company,custom_fields', sort: '-datetime', 'page[size]': '50'
+    }));
+    if (!Array.isArray(inspections.data)) throw authError('Upstream inspections data missing', 403);
+    assertInspectionScope(inspections.data, scope, connectionId);
+    const attrs = connection.attributes || {};
+    const statAttrs = statRecord.attributes || {};
+    
+    return {
+      meta: { mode: 'live' },
+      company: sample.company,
+      agent: {
+        firstName: attrs.first_name || '',
+        lastName: attrs.last_name || '',
+        agency: attrs.agency_name || '',
+        city: attrs.city || '',
+        state: attrs.state || '',
+        photoUrl: attrs.image || attrs.thumb || sample.agent.photoUrl
+      },
+      stats: {
+        totalInspections: Number(statAttrs.total_inspections_count || attrs.total_inspections_count || 0),
+        buyingInspections: Number(statAttrs.buying_inspections_count || 0),
+        sellingInspections: Number(statAttrs.selling_inspections_count || 0),
+        firstInspection: statAttrs.first_inspection_date ? String(statAttrs.first_inspection_date).replace(/[\u2010-\u2015]/g, '-').slice(0, 10) : null,
+        lastInspection: statAttrs.last_inspection_date ? String(statAttrs.last_inspection_date).replace(/[\u2010-\u2015]/g, '-').slice(0, 10) : null,
+        overallCount: Number(statAttrs.overall_inspections_count || 0)
+      },
+      tier: sample.tier,
+      inspections: (inspections.data || []).map(insp => mapInspection(insp, inspections.included || []))
+    };
+  }
+
+  function sendStatic(res, pathname) {
+    const requested = pathname === '/' || pathname.startsWith('/agent/') ? '/index.html' : pathname;
+    let decoded;
+    try { decoded = decodeURIComponent(requested); } catch { sendJson(res, 400, { error: 'Malformed URL' }); return; }
+    if (decoded.includes('\0') || decoded.includes('\\') || decoded.split('/').includes('..')) { sendJson(res, 403, { error: 'Forbidden' }); return; }
+    const file = staticFiles.get(path.posix.normalize(decoded));
+    if (!file) { sendJson(res, 404, { error: 'Not found' }); return; }
+    res.writeHead(200, headers({
+      'Content-Type': file.contentType,
+      'Cache-Control': file.cacheControl
+    }));
+    res.end(file.body);
+  }
+
+//   async function handleRequest(req, res) {
+//     const startedAt = nowMs();
+//     let pathname = '<malformed>';
+//     let status = 500;
+//     try {
+//       let url;
+//       try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
+//       pathname = url.pathname;
+//       if (req.method === 'GET' && pathname === '/api/health') {
+//         sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
+//       }
+//       if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
+//         const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
+//         if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
+//         if (config.mode === 'live') {
+//           let grant;
+//           try {
+//             validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
+//             grant = bearerToken(req);
+//             verifyGrant(grant, connectionId, config.signingSecret, { now: nowSeconds() });
+//           }
+//           catch (error) { status = error.statusCode || 401; sendJson(res, status, { error: error.message }); return; }
+//           const key = crypto.createHash('sha256').update(`${grant}:${connectionId}`).digest('hex');
+//           if (!allowRequest(key)) { sendJson(res, 429, { error: 'Rate limit exceeded' }); status = 429; return; }
+//         }
+//         const payload = await getAgentPayload(connectionId);
+//         if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
+//         sendJson(res, 200, payload); status = 200; return;
+//       }
+//       if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
+//       sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
+//     } catch (error) {
+//       status = Number(error.statusCode) || 500;
+//       if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
+//       else res.destroy?.();
+//     } finally {
+//       const route = pathname === '/api/health'
+//         ? '/api/health'
+//         : (pathname.startsWith('/api/agent/')
+//             ? '/api/agent/:id'
+//             : (pathname.startsWith('/agent/') ? '/agent/:id' : '/:static-or-not-found'));
+//       log({ method: req.method, route, status, durationMs: Math.max(0, nowMs() - startedAt) });
+//     }
+//   }
+
+  async function getPublicInspectionBySlug(slug, upstreamGet) {
+    if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
+
+    const endpoint = query('/v2/inspections', {
+      'filter[slug]': slug,
+      'include': 'custom_fields'
+    });
+
+    const response = await upstreamGet(endpoint);
+    const data = response.data || [];
+    if (!data.length) return null;
+
+    const insp = data[0];
+    const included = response.included || [];
+
+    return mapPublicStatusInspection(insp, included);
+  }
+
+  async function handleRequest(req, res) {
+    const startedAt = nowMs();
+    let pathname = '<malformed>';
+    let status = 500;
+    try {
+      let url;
+      try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
+      pathname = url.pathname;
+
+      const host = String(req.headers.host || '').toLowerCase();
+      const isStatusSubdomain = host.startsWith('status.');
+      const slugMatch = pathname.match(/^\/(?:status\/)?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
+
+      // 1. PUBLIC STATUS ROUTE (status.inspectmhk.com or /status/:slug or /:slug)
+      if (req.method === 'GET' && (isStatusSubdomain || slugMatch)) {
+        const slug = slugMatch ? slugMatch[1] : pathname.slice(1).replace(/^status\//, '');
+        
+        if (slug) {
+          const data = await getPublicInspectionBySlug(slug, upstreamGet);
+          const html = renderPublicStatusHtml(data, config.branding);
+          status = data ? 200 : 404;
+          res.writeHead(status, headers({
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=60'
+          }));
+          res.end(html);
+          return;
+        }
+      }
+
+      // 2. HEALTH CHECK ROUTE
+      if (req.method === 'GET' && pathname === '/api/health') {
+        sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
+      }
+
+      // 3. AGENT PORTAL API ROUTE
+      if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
+        const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
+        if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
+        if (config.mode === 'live') {
+          let grant;
+          try {
+            validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
+            grant = bearerToken(req);
+            verifyGrant(grant, connectionId, config.signingSecret, { now: nowSeconds() });
+          }
+          catch (error) { status = error.statusCode || 401; sendJson(res, status, { error: error.message }); return; }
+          const key = crypto.createHash('sha256').update(`${grant}:${connectionId}`).digest('hex');
+          if (!allowRequest(key)) { sendJson(res, 429, { error: 'Rate limit exceeded' }); status = 429; return; }
+        }
+        const payload = await getAgentPayload(connectionId);
+        if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
+        sendJson(res, 200, payload); status = 200; return;
+      }
+
+      // 4. STATIC FILES & SINGLE PAGE APP ROUTE
+      if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
+      sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
+    } catch (error) {
+      status = Number(error.statusCode) || 500;
+      if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
+      else res.destroy?.();
+    } finally {
+      const route = pathname === '/api/health'
+        ? '/api/health'
+        : (pathname.startsWith('/api/agent/')
+            ? '/api/agent/:id'
+            : (pathname.startsWith('/agent/') ? '/agent/:id' : '/:static-or-not-found'));
+      log({ method: req.method, route, status, durationMs: Math.max(0, nowMs() - startedAt) });
+    }
+  }
+
+  return { config, handleRequest, getAgentPayload };
 }
 
 function createServer(portal) {
