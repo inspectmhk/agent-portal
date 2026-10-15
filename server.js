@@ -514,17 +514,12 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Inspection Not Found | ${branding.name}</title>
-  <style>
-    body { background: #0B0B0B; color: #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-    .card { background: #1A1A1E; border: 1px solid #2A2A30; border-radius: 12px; padding: 32px; max-width: 420px; text-align: center; }
-    h1 { font-size: 1.25rem; margin-bottom: 8px; color: #FFFFFF; }
-    p { color: #9CA3AF; font-size: 0.875rem; margin-bottom: 24px; }
-  </style>
+  <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <div class="card">
-    <h1>Inspection Schedule Not Found</h1>
-    <p>The requested inspection link may be invalid or expired.</p>
+<body style="background:#0B0B0B; color:#E5E7EB; font-family:-apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:20px;">
+  <div style="background:#1A1A1E; border:1px solid #2A2A30; border-radius:12px; padding:32px; max-width:420px; text-align:center;">
+    <h1 style="font-size:1.25rem; margin-bottom:8px; color:#FFFFFF;">Inspection Schedule Not Found</h1>
+    <p style="color:#9CA3AF; font-size:0.875rem; margin:0;">The requested inspection link may be invalid or expired.</p>
   </div>
 </body>
 </html>`;
@@ -548,24 +543,24 @@ function renderPublicStatusHtml(data, branding) {
   }
 
   const rowsHtml = [
-    `<div class="row">
-      <span class="dot"></span>
-      <span class="label">Main Inspection: </span>
-      <span class="val">${data.dateFormatted}</span>
+    `<div class="timeline-row">
+      <span class="timeline-dot"></span>
+      <span style="font-weight:600; color:#FFFFFF; margin-right:6px;">Main Inspection: </span>
+      <span style="color:#9CA3AF;">${data.dateFormatted}</span>
     </div>`
   ];
 
   for (const sub of subItems) {
     const valLower = sub.scheduleStr.toLowerCase();
-    let statusClass = 'val-default';
-    if (valLower.includes('pending')) statusClass = 'val-pending';
-    else if (valLower.includes('complete')) statusClass = 'val-complete';
+    let statusColor = '#9CA3AF';
+    if (valLower.includes('pending')) statusColor = '#EAB308';
+    else if (valLower.includes('complete')) statusColor = '#22C55E';
 
     rowsHtml.push(`
-      <div class="row">
-        <span class="dot"></span>
-        <span class="label">${sub.service}: </span>
-        <span class="val ${statusClass}">${sub.scheduleStr}</span>
+      <div class="timeline-row" style="margin-top:10px;">
+        <span class="timeline-dot"></span>
+        <span style="font-weight:600; color:#FFFFFF; margin-right:6px;">${sub.service}: </span>
+        <span style="color:${statusColor}; font-weight:600;">${sub.scheduleStr}</span>
       </div>
     `);
   }
@@ -577,45 +572,26 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Status: ${data.location} | ${branding.name}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background-color: #0B0B0B; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; min-height: 100vh; padding: 24px 16px; }
-    .container { max-width: 520px; margin: 0 auto; }
-    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #2A2A30; }
-    .header img { height: 2.25rem; width: auto; }
-    .brand-title { font-size: 1.125rem; font-weight: 700; color: #FFFFFF; }
-    .brand-sub { font-size: 0.8125rem; color: #9CA3AF; }
-    .card { background: #1A1A1E; border: 1px solid #2A2A30; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-    .address { font-size: 1.25rem; font-weight: 700; color: #FFFFFF; margin-bottom: 4px; }
-    .services { font-size: 0.875rem; color: #9CA3AF; margin-bottom: 16px; }
-    .divider { height: 1px; background: #2A2A30; margin: 16px 0; }
-    .row { display: flex; align-items: center; margin-bottom: 10px; font-size: 0.875rem; }
-    .dot { width: 6px; height: 6px; background-color: #9CA3AF; border-radius: 50%; display: inline-block; margin-right: 10px; flex-shrink: 0; }
-    .label { font-weight: 600; color: #FFFFFF; margin-right: 6px; }
-    .val { color: #9CA3AF; }
-    .val-pending { color: #EAB308; font-weight: 600; }
-    .val-complete { color: #22C55E; font-weight: 600; }
-    .footer { text-align: center; color: #6B7280; font-size: 0.75rem; margin-top: 32px; }
-  </style>
+  <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <img src="/assets/M300.png" alt="${branding.name}">
+<body style="background-color:#0B0B0B; color:#FFFFFF; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; padding:24px 16px; margin:0;">
+  <div style="max-width:520px; margin:0 auto;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #2A2A30;">
+      <img src="/assets/M300.png" alt="${branding.name}" style="height:2.25rem; width:auto; display:block; object-fit:contain;">
       <div>
-        <div class="brand-title">${branding.name}</div>
-        <div class="brand-sub">Inspection Status Tracker</div>
+        <div style="font-size:1.125rem; font-weight:700; color:#FFFFFF;">${branding.name}</div>
+        <div style="font-size:0.8125rem; color:#9CA3AF;">Inspection Status Tracker</div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="address">${data.location}</div>
-      <div class="services">${data.services}</div>
-      <div class="divider"></div>
+    <div style="background:#1A1A1E; border:1px solid #2A2A30; border-radius:12px; padding:20px; margin-bottom:16px;">
+      <div style="font-size:1.25rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">${data.location}</div>
+      <div style="font-size:0.875rem; color:#9CA3AF; margin-bottom:16px;">${data.services}</div>
+      <div style="height:1px; background:#2A2A30; margin:16px 0;"></div>
       ${rowsHtml.join('')}
     </div>
 
-    <div class="footer">
+    <div style="text-align:center; color:#6B7280; font-size:0.75rem; margin-top:32px;">
       Questions? Contact ${branding.name} at ${branding.phone}
     </div>
   </div>
