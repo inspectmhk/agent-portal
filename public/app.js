@@ -150,8 +150,15 @@ function renderDashboard(data) {
   app.append(
     el('header', { class: 'topbar' }, [
       el('div', { class: 'brand-lockup' }, [
-        el('div', { class: 'brand', text: company.name }),
-        el('p', { class: 'company-tagline', text: company.tagline })
+        el('img', { 
+          class: 'company-logo', 
+          src: '/assets/M300.png', 
+          alt: company.name 
+        }),
+        el('div', { class: 'brand-text' }, [
+          el('div', { class: 'brand', text: company.name }),
+          el('p', { class: 'company-tagline', text: company.tagline })
+        ])
       ]),
       el('div', { class: 'badge', text: company.appName })
     ])

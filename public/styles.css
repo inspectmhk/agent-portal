@@ -107,6 +107,25 @@ button:focus-visible,
   font-weight: 800;
 }
 
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.company-logo {
+  height: 2.5rem; /* Matches combined height of name + tagline */
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
 .company-tagline {
   margin: 2px 0 0;
   color: var(--muted);
