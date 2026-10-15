@@ -482,20 +482,17 @@ function mapPublicStatusInspection(data, included) {
     }
   }
 
-  // 1. Look for custom field 54966 directly inside attributes.custom_fields
+  // Find Subcontractor Schedule in included array
   let subSchedule = null;
-  if (Array.isArray(attrs.custom_fields)) {
-    const cf = attrs.custom_fields.find(item => String(item.id) === '54966' || String(item.custom_field_id) === '54966');
-    if (cf) {
-      subSchedule = cf.value || cf.text_value;
-    }
-  }
+  if (Array.isArray(included)) {
+    const subField = included.find(item => {
+      if (item.type !== 'custom_field') return false;
+      const a = item.attributes || {};
+      return String(a.custom_field_template_id) === '54966' || 
+             a.name === 'Subcontractor Schedule' || 
+             a.identifier === 'SubcontractorSchedule';
+    });
 
-  // 2. Fallback: Check top-level JSON-API "included" array
-  if (!subSchedule && Array.isArray(included)) {
-    const subField = included.find(
-      item => (item.type === 'custom_fields' || item.type === 'custom_field_values') && String(item.id) === '54966'
-    );
     if (subField && subField.attributes) {
       subSchedule = subField.attributes.value || subField.attributes.text_value;
     }
