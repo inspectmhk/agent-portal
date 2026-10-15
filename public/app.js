@@ -271,14 +271,98 @@ function renderDashboard(data) {
     );
   }
 
-  // 3. COMPLETED INSPECTIONS SECTION (Only if items exist)
+  // 3. COMPLETED INSPECTIONS SECTION (Paginated & Searchable)
   if (completed.length > 0) {
-    app.append(
-      el('section', { class: 'section' }, [
-        el('h2', { text: 'Completed Inspections' }),
-        buildTimeline(completed, 'badge-completed', false)
-      ])
-    );
+    let currentPage = 1;
+    const pageSize = 5;
+    let searchQuery = '';
+
+    const sectionEl = el('section', { class: 'section' });
+    const headerEl = el('div', { class: 'section-header-row' }, [
+      el('h2', { text: 'Completed Inspections' })
+    ]);
+
+    const searchInput = el('input', {
+      type: 'text',
+      class: 'search-input',
+      placeholder: 'Search address or service...'
+    });
+
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      currentPage = 1;
+      renderCompleted();
+    });
+
+    const searchWrapper = el('div', { class: 'search-wrapper' }, [searchInput]);
+    const timelineContainer = el('div', { class: 'completed-timeline-wrapper' });
+    const paginationContainer = el('div', { class: 'pagination-controls' });
+
+    function renderCompleted() {
+      timelineContainer.replaceChildren();
+      paginationContainer.replaceChildren();
+
+      // Filter list based on search term
+      const filtered = completed.filter(item => {
+        if (!searchQuery) return true;
+        const location = (item.location || item.address || '').toLowerCase();
+        const services = (item.services || '').toLowerCase();
+        return location.includes(searchQuery) || services.includes(searchQuery);
+      });
+
+      if (filtered.length === 0) {
+        timelineContainer.append(
+          el('div', { class: 'empty-search-state', text: 'No matching completed inspections found.' })
+        );
+        return;
+      }
+
+      // Calculate slices
+      const totalPages = Math.ceil(filtered.length / pageSize);
+      const startIndex = (currentPage - 1) * pageSize;
+      const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+      timelineContainer.append(buildTimeline(pageItems, 'badge-completed', false));
+
+      // Build pagination controls if pages > 1
+      if (totalPages > 1) {
+        const prevBtn = el('button', {
+          class: 'pagination-btn',
+          disabled: currentPage === 1,
+          text: '← Previous'
+        });
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderCompleted();
+          }
+        });
+
+        const pageIndicator = el('span', {
+          class: 'pagination-info',
+          text: `Page ${currentPage} of ${totalPages}`
+        });
+
+        const nextBtn = el('button', {
+          class: 'pagination-btn',
+          disabled: currentPage === totalPages,
+          text: 'Next →'
+        });
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            renderCompleted();
+          }
+        });
+
+        paginationContainer.append(prevBtn, pageIndicator, nextBtn);
+      }
+    }
+
+    renderCompleted();
+
+    sectionEl.append(headerEl, searchWrapper, timelineContainer, paginationContainer);
+    app.append(sectionEl);
   }
 
   // 4. GLOBAL EMPTY STATE (Only if no inspections exist across all 3 stages)
