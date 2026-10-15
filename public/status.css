@@ -199,3 +199,36 @@ body.status-body {
 .status-address-group {
   flex-grow: 1;
 }
+
+.status-qr-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #141417;
+  border: 1px solid #222226;
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.status-qr-img {
+  width: 90px;
+  height: 90px;
+  border-radius: 8px;
+  border: 1px solid #2A2A30;
+  background: #0B0B0B;
+  padding: 4px;
+}
+
+.status-qr-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 2px;
+}
+
+.status-qr-sub {
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  line-height: 1.3;
+}

@@ -24,7 +24,7 @@ const MIME_TYPES = {
 };
 
 const SECURITY_HEADERS = Object.freeze({
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' https://cdn.spectora.com; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' https://cdn.spectora.com https://quickchart.io; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
@@ -508,7 +508,7 @@ function mapPublicStatusInspection(data, included) {
   };
 }
 
-function renderPublicStatusHtml(data, branding) {
+function renderPublicStatusHtml(data, branding, currentUrl = '') {
   if (!data) {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -595,6 +595,18 @@ function renderPublicStatusHtml(data, branding) {
     `);
   }
 
+  const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(currentUrl)}&size=150&margin=1&dark=D4AF37&light=0B0B0B`;
+
+  const qrSectionHtml = `
+    <div class="status-qr-container">
+      <img src="${qrUrl}" alt="Scan to share inspection status" class="status-qr-img" width="120" height="120">
+      <div class="status-qr-text">
+        <div class="status-qr-title">Scan to Share Status</div>
+        <div class="status-qr-sub">Instant access for buyers, agents & subs</div>
+      </div>
+    </div>
+  `;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -636,7 +648,9 @@ function renderPublicStatusHtml(data, branding) {
 
       <div class="status-divider"></div>
       ${rowsHtml.join('')}
-    </div>
+      <div class="status-divider"></div>
+      ${qrSectionHtml}
+      </div>
 
     <div class="status-footer">
       Questions? Contact ${branding.name} at ${branding.phone}
@@ -779,8 +793,11 @@ function createPortal(options = {}) {
         const slug = slugMatch ? slugMatch[1] : pathname.slice(1).replace(/^status\//, '');
         
         if (slug) {
+          const proto = req.headers['x-forwarded-proto'] || 'https';
+          const currentUrl = `${proto}://${host}/${slug}`;
+
           const data = await getPublicInspectionBySlug(slug, upstreamGet);
-          const html = renderPublicStatusHtml(data, config.branding);
+          const html = renderPublicStatusHtml(data, config.branding, currentUrl);
           status = data ? 200 : 404;
           res.writeHead(status, headers({
             'Content-Type': 'text/html; charset=utf-8',
