@@ -67,22 +67,58 @@ body.status-body {
   white-space: nowrap;
 }
 
-/* Two-Line Formatted Badge Pill */
 .status-pill {
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  color: #C8A251;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 6px 10px;
   border-radius: 12px;
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.2;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
+.status-pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Upcoming State (Sky Blue) */
+.status-pill-upcoming {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38BDF8;
+}
+.status-pill-upcoming .status-pill-dot {
+  background-color: #38BDF8;
+}
+
+/* In-Progress State (Gold) */
+.status-pill-progress {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #C8A251;
+}
+.status-pill-progress .status-pill-dot {
+  background-color: #C8A251;
+}
+
+/* Complete State (Green) */
+.status-pill-complete {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22C55E;
+}
+.status-pill-complete .status-pill-dot {
+  background-color: #22C55E;
+}
 /* Inspection Content Card */
 .status-card {
   background: #141417;
@@ -113,9 +149,10 @@ body.status-body {
 
 .status-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 10px;
   font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .status-row:last-child {
@@ -225,4 +262,19 @@ body.status-body {
   font-size: 0.75rem;
   color: #9CA3AF;
   line-height: 1.3;
+}
+
+/* Mobile Responsiveness for Timeline Rows & Header Pill */
+@media (max-width: 480px) {
+  .status-row {
+    flex-wrap: wrap;
+  }
+
+  .status-label {
+    margin-right: 4px;
+  }
+
+  .status-val {
+    word-break: break-word;
+  }
 }

@@ -467,6 +467,9 @@ function mapPublicStatusInspection(data, included) {
   let timeRangeFormatted = 'TBD';
   let badgeMonth = 'OCT';
   let badgeDay = '23';
+  let overallStatus = 'UPCOMING';
+
+  const now = new Date();
 
   if (rawDt) {
     const dt = new Date(rawDt);
@@ -479,10 +482,19 @@ function mapPublicStatusInspection(data, included) {
       const endStr = endDt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
       timeRangeFormatted = `${startStr} – ${endStr}`;
+
+      if (attrs.published_at) {
+        overallStatus = 'COMPLETE';
+      } else if (now >= dt && now <= endDt) {
+        overallStatus = 'IN PROGRESS';
+      } else if (now > endDt) {
+        overallStatus = 'COMPLETE';
+      } else {
+        overallStatus = 'UPCOMING';
+      }
     }
   }
 
-  // Find Subcontractor Schedule in included array
   let subSchedule = null;
   if (Array.isArray(included)) {
     const subField = included.find(item => {
@@ -504,6 +516,7 @@ function mapPublicStatusInspection(data, included) {
     timeRangeFormatted,
     badgeMonth,
     badgeDay,
+    overallStatus,
     subcontractorSchedule: subSchedule
   };
 }
@@ -607,6 +620,10 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
     </div>
   `;
 
+  let statusClass = 'status-pill-upcoming';
+  if (data.overallStatus === 'IN PROGRESS') statusClass = 'status-pill-progress';
+  else if (data.overallStatus === 'COMPLETE') statusClass = 'status-pill-complete';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -631,7 +648,9 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
           <div class="status-brand-sub">Engineering-Minded Inspections</div>
         </div>
       </div>
-      <div class="status-pill">INSPECTION STATUS</div>
+      <div class="status-pill ${statusClass}">
+        <span class="status-pill-dot"></span>${data.overallStatus}
+      </div>
     </div>
 
     <div class="status-card">
