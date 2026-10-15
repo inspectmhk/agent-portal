@@ -33,8 +33,6 @@ body.status-body {
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #1A1A1E;
-  margin-bottom: 24px;
 }
 
 .status-brand-left {
@@ -205,10 +203,6 @@ body.status-body {
   align-items: center;
   gap: 16px;
   background: #141417;
-  border: 1px solid #222226;
-  border-radius: 14px;
-  padding: 16px;
-  margin-top: 20px;
 }
 
 .status-qr-img {
