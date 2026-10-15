@@ -514,12 +514,12 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Inspection Not Found | ${branding.name}</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/status.css">
 </head>
-<body style="background:#0B0B0B; color:#E5E7EB; font-family:-apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:20px;">
-  <div style="background:#1A1A1E; border:1px solid #2A2A30; border-radius:12px; padding:32px; max-width:420px; text-align:center;">
-    <h1 style="font-size:1.25rem; margin-bottom:8px; color:#FFFFFF;">Inspection Schedule Not Found</h1>
-    <p style="color:#9CA3AF; font-size:0.875rem; margin:0;">The requested inspection link may be invalid or expired.</p>
+<body class="status-404-body">
+  <div class="status-404-card">
+    <h1 class="status-404-title">Inspection Schedule Not Found</h1>
+    <p class="status-404-msg">The requested inspection link may be invalid or expired.</p>
   </div>
 </body>
 </html>`;
@@ -543,24 +543,24 @@ function renderPublicStatusHtml(data, branding) {
   }
 
   const rowsHtml = [
-    `<div class="timeline-row">
-      <span class="timeline-dot"></span>
-      <span style="font-weight:600; color:#FFFFFF; margin-right:6px;">Main Inspection: </span>
-      <span style="color:#9CA3AF;">${data.dateFormatted}</span>
+    `<div class="status-row">
+      <span class="status-dot"></span>
+      <span class="status-label">Main Inspection:</span>
+      <span class="status-val">${data.dateFormatted}</span>
     </div>`
   ];
 
   for (const sub of subItems) {
     const valLower = sub.scheduleStr.toLowerCase();
-    let statusColor = '#9CA3AF';
-    if (valLower.includes('pending')) statusColor = '#EAB308';
-    else if (valLower.includes('complete')) statusColor = '#22C55E';
+    let valClass = 'status-val';
+    if (valLower.includes('pending')) valClass = 'status-val-pending';
+    else if (valLower.includes('complete')) valClass = 'status-val-complete';
 
     rowsHtml.push(`
-      <div class="timeline-row" style="margin-top:10px;">
-        <span class="timeline-dot"></span>
-        <span style="font-weight:600; color:#FFFFFF; margin-right:6px;">${sub.service}: </span>
-        <span style="color:${statusColor}; font-weight:600;">${sub.scheduleStr}</span>
+      <div class="status-row">
+        <span class="status-dot"></span>
+        <span class="status-label">${sub.service}:</span>
+        <span class="${valClass}">${sub.scheduleStr}</span>
       </div>
     `);
   }
@@ -572,26 +572,26 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Status: ${data.location} | ${branding.name}</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/status.css">
 </head>
-<body style="background-color:#0B0B0B; color:#FFFFFF; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; padding:24px 16px; margin:0;">
-  <div style="max-width:520px; margin:0 auto;">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #2A2A30;">
-      <img src="/assets/M300.png" alt="${branding.name}" style="height:2.25rem; width:auto; display:block; object-fit:contain;">
+<body class="status-body">
+  <div class="status-container">
+    <div class="status-header">
+      <img src="/assets/M300.png" alt="${branding.name}" class="status-logo">
       <div>
-        <div style="font-size:1.125rem; font-weight:700; color:#FFFFFF;">${branding.name}</div>
-        <div style="font-size:0.8125rem; color:#9CA3AF;">Inspection Status Tracker</div>
+        <div class="status-brand-title">${branding.name}</div>
+        <div class="status-brand-sub">Inspection Status Tracker</div>
       </div>
     </div>
 
-    <div style="background:#1A1A1E; border:1px solid #2A2A30; border-radius:12px; padding:20px; margin-bottom:16px;">
-      <div style="font-size:1.25rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">${data.location}</div>
-      <div style="font-size:0.875rem; color:#9CA3AF; margin-bottom:16px;">${data.services}</div>
-      <div style="height:1px; background:#2A2A30; margin:16px 0;"></div>
+    <div class="status-card">
+      <div class="status-address">${data.location}</div>
+      <div class="status-services">${data.services}</div>
+      <div class="status-divider"></div>
       ${rowsHtml.join('')}
     </div>
 
-    <div style="text-align:center; color:#6B7280; font-size:0.75rem; margin-top:32px;">
+    <div class="status-footer">
       Questions? Contact ${branding.name} at ${branding.phone}
     </div>
   </div>
