@@ -26,11 +26,12 @@ body.status-body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* Match Portal Header Layout */
+/* Header Layout Improvements */
 .status-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding-bottom: 20px;
   border-bottom: 1px solid #1A1A1E;
   margin-bottom: 24px;
@@ -40,13 +41,16 @@ body.status-body {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .status-logo {
-  height: 2.25rem;
+  height: 2.5rem;
   width: auto;
   display: block;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .status-brand-title {
@@ -54,6 +58,7 @@ body.status-body {
   font-weight: 700;
   color: #FFFFFF;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .status-brand-sub {
@@ -61,20 +66,23 @@ body.status-body {
   color: #9CA3AF;
   font-weight: 400;
   margin-top: 2px;
+  white-space: nowrap;
 }
 
-/* Match Portal Badge Pill */
+/* Two-Line Formatted Badge Pill */
 .status-pill {
   background: rgba(212, 175, 55, 0.1);
   border: 1px solid rgba(212, 175, 55, 0.3);
   color: #C8A251;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 6px 12px;
-  border-radius: 9999px;
-  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 12px;
+  text-align: center;
+  line-height: 1.3;
+  flex-shrink: 0;
 }
 
 /* Inspection Content Card */

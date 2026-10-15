@@ -463,12 +463,10 @@ function mapPublicStatusInspection(data, included) {
   if (!data) return null;
   const attrs = data.attributes || {};
 
-  // Extract raw datetime string for calculations
   const rawDt = attrs.datetime || attrs.scheduled_at || attrs.date;
-  let dateFormatted = 'TBD';
+  let timeRangeFormatted = 'TBD';
   let badgeMonth = 'OCT';
   let badgeDay = '23';
-  let timeRangeFormatted = 'TBD';
 
   if (rawDt) {
     const dt = new Date(rawDt);
@@ -476,20 +474,27 @@ function mapPublicStatusInspection(data, included) {
       badgeMonth = dt.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
       badgeDay = dt.getDate();
 
-      // Format time window (e.g., 8:00 AM - 10:00 AM)
       const startStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      const endDt = new Date(dt.getTime() + 2 * 60 * 60 * 1000); // 2 hour window
+      const endDt = new Date(dt.getTime() + 2 * 60 * 60 * 1000);
       const endStr = endDt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
       timeRangeFormatted = `${startStr} – ${endStr}`;
     }
   }
 
-  // Find custom field 54966 for subcontractor schedule
+  // 1. Look for custom field 54966 directly inside attributes.custom_fields
   let subSchedule = null;
-  if (Array.isArray(included)) {
+  if (Array.isArray(attrs.custom_fields)) {
+    const cf = attrs.custom_fields.find(item => String(item.id) === '54966' || String(item.custom_field_id) === '54966');
+    if (cf) {
+      subSchedule = cf.value || cf.text_value;
+    }
+  }
+
+  // 2. Fallback: Check top-level JSON-API "included" array
+  if (!subSchedule && Array.isArray(included)) {
     const subField = included.find(
-      item => item.type === 'custom_fields' && String(item.id) === '54966'
+      item => (item.type === 'custom_fields' || item.type === 'custom_field_values') && String(item.id) === '54966'
     );
     if (subField && subField.attributes) {
       subSchedule = subField.attributes.value || subField.attributes.text_value;
@@ -586,7 +591,7 @@ function renderPublicStatusHtml(data, branding) {
           <div class="status-brand-sub">Engineering-Minded Inspections</div>
         </div>
       </div>
-      <div class="status-pill">INSPECTION STATUS</div>
+      <div class="status-pill">INSPECTION<br>STATUS</div>
     </div>
 
     <div class="status-card">
