@@ -7,95 +7,107 @@
 body.status-body {
   background-color: #0B0B0B;
   color: #FFFFFF;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
-  padding: 24px 16px;
+  padding: 40px 20px;
 }
 
 .status-container {
-  max-width: 520px;
+  max-width: 560px;
   margin: 0 auto;
 }
 
 .status-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
   border-bottom: 1px solid #2A2A30;
 }
 
 .status-logo {
-  height: 2.25rem;
+  height: 2.75rem;
   width: auto;
   display: block;
   object-fit: contain;
 }
 
 .status-brand-title {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #FFFFFF;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .status-brand-sub {
   font-size: 0.8125rem;
-  color: #9CA3AF;
+  color: #C8A251;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
 
 .status-card {
   background: #1A1A1E;
   border: 1px solid #2A2A30;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .status-address {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
   color: #FFFFFF;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
 }
 
 .status-services {
   font-size: 0.875rem;
-  color: #9CA3AF;
-  margin-bottom: 16px;
+  color: #A0A0A8;
+  margin-bottom: 20px;
 }
 
 .status-divider {
   height: 1px;
   background: #2A2A30;
-  margin: 16px 0;
+  margin: 20px 0;
 }
 
 .status-row {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  font-size: 0.875rem;
+  margin-bottom: 12px;
+  font-size: 0.9375rem;
+}
+
+.status-row:last-child {
+  margin-bottom: 0;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
-  background-color: #9CA3AF;
+  width: 7px;
+  height: 7px;
+  background-color: #A0A0A8;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 10px;
+  margin-right: 12px;
   flex-shrink: 0;
 }
 
 .status-label {
   font-weight: 600;
   color: #FFFFFF;
-  margin-right: 6px;
+  margin-right: 8px;
 }
 
 .status-val {
-  color: #9CA3AF;
+  color: #A0A0A8;
 }
 
 .status-val-pending {
@@ -111,11 +123,11 @@ body.status-body {
 .status-footer {
   text-align: center;
   color: #6B7280;
-  font-size: 0.75rem;
-  margin-top: 32px;
+  font-size: 0.8125rem;
+  margin-top: 36px;
 }
 
-/* 404 / Error State Styling */
+/* 404 State */
 .status-404-body {
   background: #0B0B0B;
   color: #E5E7EB;
@@ -131,9 +143,9 @@ body.status-body {
 .status-404-card {
   background: #1A1A1E;
   border: 1px solid #2A2A30;
-  border-radius: 12px;
-  padding: 32px;
-  max-width: 420px;
+  border-radius: 16px;
+  padding: 36px;
+  max-width: 440px;
   text-align: center;
 }
 
@@ -144,6 +156,6 @@ body.status-body {
 }
 
 .status-404-msg {
-  color: #9CA3AF;
+  color: #A0A0A8;
   font-size: 0.875rem;
 }

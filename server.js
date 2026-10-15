@@ -515,6 +515,11 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="robots" content="noindex, nofollow">
   <title>Inspection Not Found | ${branding.name}</title>
   <link rel="stylesheet" href="/status.css">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="shortcut icon" href="/assets/favicon.ico">
+  <link rel="manifest" href="/site.webmanifest">
 </head>
 <body class="status-404-body">
   <div class="status-404-card">
@@ -573,6 +578,11 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="robots" content="noindex, nofollow">
   <title>Status: ${data.location} | ${branding.name}</title>
   <link rel="stylesheet" href="/status.css">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="shortcut icon" href="/assets/favicon.ico">
+  <link rel="manifest" href="/site.webmanifest">
 </head>
 <body class="status-body">
   <div class="status-container">
