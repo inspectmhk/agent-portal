@@ -67,6 +67,7 @@ body.status-body {
   white-space: nowrap;
 }
 
+/* Base Pill Styling */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -81,6 +82,7 @@ body.status-body {
   line-height: 1.2;
   flex-shrink: 0;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
 
 .status-pill-dot {
@@ -90,37 +92,7 @@ body.status-body {
   display: inline-block;
 }
 
-/* Upcoming State (Sky Blue) */
-.status-pill-upcoming {
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  color: #38BDF8;
-}
-.status-pill-upcoming .status-pill-dot {
-  background-color: #38BDF8;
-}
-
-/* In-Progress State (Gold) */
-.status-pill-progress {
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  color: #C8A251;
-}
-.status-pill-progress .status-pill-dot {
-  background-color: #C8A251;
-}
-
-/* Complete State (Green) */
-.status-pill-complete {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #22C55E;
-}
-.status-pill-complete .status-pill-dot {
-  background-color: #22C55E;
-}
-
-/* Dynamic Theme Colors for Pill & Date Badge */
+/* Shared Theme Colors for BOTH Pill & Date Badge */
 .status-theme-upcoming {
   background: rgba(56, 189, 248, 0.1);
   border-color: rgba(56, 189, 248, 0.3);
