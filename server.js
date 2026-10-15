@@ -165,8 +165,13 @@ function createGrant(connectionId, secret, options = {}) {
   const validatedConnectionId = validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
   if (Buffer.byteLength(secret || '', 'utf8') < 32) throw new Error('A signing secret of at least 32 bytes is required');
   const now = options.now ?? Math.floor(Date.now() / 1000);
-  const ttlSeconds = options.ttlSeconds ?? 3600;
-  if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 86400) throw new Error('Grant TTL must be between 1 and 86400 seconds');
+  
+  // Default to 24 hours (86,400s). For 30 days, use 2592000.
+  const ttlSeconds = options.ttlSeconds ?? 86400; 
+  if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 2592000) {
+    throw new Error('Grant TTL must be between 1 and 2592000 seconds');
+  }
+
   const payload = Buffer.from(JSON.stringify({ v: 1, connectionId: validatedConnectionId, exp: now + ttlSeconds })).toString('base64url');
   return `${payload}.${signGrantPayload(payload, secret)}`;
 }
