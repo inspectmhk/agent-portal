@@ -46,11 +46,11 @@ body.status-body {
 }
 
 .status-logo {
-  height: 2.5rem;
+  height: 35px; /* Matches combined height of name + tagline */
   width: auto;
-  display: block;
   object-fit: contain;
-  flex-shrink: 0;
+  display: block;
+  margin-top: 8px;
 }
 
 .status-brand-title {

@@ -521,11 +521,38 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="robots" content="noindex, nofollow">
   <title>Inspection Not Found | ${branding.name}</title>
   <link rel="stylesheet" href="/status.css">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
 </head>
-<body class="status-404-body">
-  <div class="status-404-card">
-    <h1 class="status-404-title">Inspection Schedule Not Found</h1>
-    <p class="status-404-msg">The requested inspection link may be invalid or expired.</p>
+<body class="status-body">
+  <div class="status-portal-shell">
+    
+    <div class="status-header">
+      <div class="status-brand-left">
+        <img src="/assets/M300.png" alt="${branding.name}" class="status-logo">
+        <div>
+          <div class="status-brand-title">${branding.name}</div>
+          <div class="status-brand-sub">Engineering-Minded Inspections</div>
+        </div>
+      </div>
+      <div class="status-pill">INSPECTION STATUS</div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-card-header">
+        <div class="status-address-group">
+          <div class="status-address">Inspection Schedule Not Found</div>
+          <div class="status-services">The requested inspection link may be invalid or expired.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-footer">
+      Questions? Contact ${branding.name} at ${branding.phone}
+    </div>
+
   </div>
 </body>
 </html>`;
@@ -579,6 +606,10 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="robots" content="noindex, nofollow">
   <title>Status: ${data.location} | ${branding.name}</title>
   <link rel="stylesheet" href="/status.css">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
 </head>
 <body class="status-body">
   <div class="status-portal-shell">
@@ -591,7 +622,7 @@ function renderPublicStatusHtml(data, branding) {
           <div class="status-brand-sub">Engineering-Minded Inspections</div>
         </div>
       </div>
-      <div class="status-pill">INSPECTION<br>STATUS</div>
+      <div class="status-pill">INSPECTION STATUS</div>
     </div>
 
     <div class="status-card">
