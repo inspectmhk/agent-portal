@@ -5,85 +5,111 @@
 }
 
 body.status-body {
-  background-color: #0B0B0B;
+  background-color: #000000;
   color: #FFFFFF;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
-  padding: 40px 20px;
+  padding: 32px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
-.status-container {
-  max-width: 560px;
-  margin: 0 auto;
+/* Match Main Portal Outer Container */
+.status-portal-shell {
+  width: 100%;
+  max-width: 600px;
+  background: #0B0B0B;
+  border: 1px solid #1A1A1E;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
+/* Match Portal Header Layout */
 .status-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 28px;
+  justify-content: space-between;
   padding-bottom: 20px;
-  border-bottom: 1px solid #2A2A30;
+  border-bottom: 1px solid #1A1A1E;
+  margin-bottom: 24px;
+}
+
+.status-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .status-logo {
-  height: 2.75rem;
+  height: 2.25rem;
   width: auto;
   display: block;
   object-fit: contain;
 }
 
 .status-brand-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #FFFFFF;
-  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
 .status-brand-sub {
-  font-size: 0.8125rem;
-  color: #C8A251;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  font-weight: 400;
   margin-top: 2px;
 }
 
+/* Match Portal Badge Pill */
+.status-pill {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #C8A251;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+/* Inspection Content Card */
 .status-card {
-  background: #1A1A1E;
-  border: 1px solid #2A2A30;
-  border-radius: 16px;
-  padding: 28px;
+  background: #141417;
+  border: 1px solid #222226;
+  border-radius: 14px;
+  padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .status-address {
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #FFFFFF;
-  margin-bottom: 6px;
-  letter-spacing: -0.01em;
+  margin-bottom: 4px;
 }
 
 .status-services {
-  font-size: 0.875rem;
-  color: #A0A0A8;
-  margin-bottom: 20px;
+  font-size: 0.84375rem;
+  color: #9CA3AF;
+  margin-bottom: 16px;
 }
 
 .status-divider {
   height: 1px;
-  background: #2A2A30;
-  margin: 20px 0;
+  background: #222226;
+  margin: 16px 0;
 }
 
 .status-row {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
-  font-size: 0.9375rem;
+  margin-bottom: 10px;
+  font-size: 0.875rem;
 }
 
 .status-row:last-child {
@@ -91,23 +117,23 @@ body.status-body {
 }
 
 .status-dot {
-  width: 7px;
-  height: 7px;
-  background-color: #A0A0A8;
+  width: 6px;
+  height: 6px;
+  background-color: #6B7280;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 12px;
+  margin-right: 10px;
   flex-shrink: 0;
 }
 
 .status-label {
   font-weight: 600;
   color: #FFFFFF;
-  margin-right: 8px;
+  margin-right: 6px;
 }
 
 .status-val {
-  color: #A0A0A8;
+  color: #9CA3AF;
 }
 
 .status-val-pending {
@@ -123,39 +149,6 @@ body.status-body {
 .status-footer {
   text-align: center;
   color: #6B7280;
-  font-size: 0.8125rem;
-  margin-top: 36px;
-}
-
-/* 404 State */
-.status-404-body {
-  background: #0B0B0B;
-  color: #E5E7EB;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  margin: 0;
-  padding: 20px;
-}
-
-.status-404-card {
-  background: #1A1A1E;
-  border: 1px solid #2A2A30;
-  border-radius: 16px;
-  padding: 36px;
-  max-width: 440px;
-  text-align: center;
-}
-
-.status-404-title {
-  font-size: 1.25rem;
-  margin-bottom: 8px;
-  color: #FFFFFF;
-}
-
-.status-404-msg {
-  color: #A0A0A8;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  margin-top: 24px;
 }
