@@ -716,68 +716,26 @@ function createPortal(options = {}) {
     res.end(file.body);
   }
 
-//   async function handleRequest(req, res) {
-//     const startedAt = nowMs();
-//     let pathname = '<malformed>';
-//     let status = 500;
-//     try {
-//       let url;
-//       try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
-//       pathname = url.pathname;
-//       if (req.method === 'GET' && pathname === '/api/health') {
-//         sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
-//       }
-//       if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
-//         const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
-//         if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
-//         if (config.mode === 'live') {
-//           let grant;
-//           try {
-//             validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
-//             grant = bearerToken(req);
-//             verifyGrant(grant, connectionId, config.signingSecret, { now: nowSeconds() });
-//           }
-//           catch (error) { status = error.statusCode || 401; sendJson(res, status, { error: error.message }); return; }
-//           const key = crypto.createHash('sha256').update(`${grant}:${connectionId}`).digest('hex');
-//           if (!allowRequest(key)) { sendJson(res, 429, { error: 'Rate limit exceeded' }); status = 429; return; }
-//         }
-//         const payload = await getAgentPayload(connectionId);
-//         if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
-//         sendJson(res, 200, payload); status = 200; return;
-//       }
-//       if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
-//       sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
-//     } catch (error) {
-//       status = Number(error.statusCode) || 500;
-//       if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
-//       else res.destroy?.();
-//     } finally {
-//       const route = pathname === '/api/health'
-//         ? '/api/health'
-//         : (pathname.startsWith('/api/agent/')
-//             ? '/api/agent/:id'
-//             : (pathname.startsWith('/agent/') ? '/agent/:id' : '/:static-or-not-found'));
-//       log({ method: req.method, route, status, durationMs: Math.max(0, nowMs() - startedAt) });
-//     }
-//   }
-
   async function getPublicInspectionBySlug(slug, upstreamGet) {
-    if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
+  if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
 
+  try {
+    // Pass page[size]=1 to prevent Spectora from scanning large result sets
     const endpoint = query('/v2/inspections', {
       'filter[slug]': slug,
-      'include': 'custom_fields'
+      'include': 'custom_fields',
+      'page[size]': '1'
     });
 
     const response = await upstreamGet(endpoint);
     const data = response.data || [];
     if (!data.length) return null;
 
-    const insp = data[0];
-    const included = response.included || [];
-
-    return mapPublicStatusInspection(insp, included);
+    return mapPublicStatusInspection(data[0], response.included || []);
+  } catch (err) {
+    return null;
   }
+}
 
   async function handleRequest(req, res) {
     const startedAt = nowMs();
