@@ -467,9 +467,6 @@ function mapPublicStatusInspection(data, included) {
   let timeRangeFormatted = 'TBD';
   let badgeMonth = 'OCT';
   let badgeDay = '23';
-  let overallStatus = 'UPCOMING';
-
-  const now = new Date();
 
   if (rawDt) {
     const dt = new Date(rawDt);
@@ -482,32 +479,45 @@ function mapPublicStatusInspection(data, included) {
       const endStr = endDt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
       timeRangeFormatted = `${startStr} – ${endStr}`;
+    }
+  }
 
-      if (attrs.published_at) {
-        overallStatus = 'COMPLETE';
-      } else if (now >= dt && now <= endDt) {
-        overallStatus = 'IN PROGRESS';
-      } else if (now > endDt) {
-        overallStatus = 'COMPLETE';
-      } else {
-        overallStatus = 'UPCOMING';
+  // 1. Extract Finished Custom Field & Subcontractor Schedule
+  let isFinished = false;
+  let subSchedule = null;
+
+  if (Array.isArray(included)) {
+    for (const item of included) {
+      if (item.type !== 'custom_field') continue;
+      const a = item.attributes || {};
+      const tplId = Number(a.custom_field_template_id);
+      const name = String(a.name || '').toLowerCase();
+      const identifier = String(a.identifier || '').toLowerCase();
+
+      // Check Finished Field (Template 47540)
+      if (tplId === 47540 || name === 'finished' || identifier === 'finished') {
+        const val = a.value;
+        isFinished = val === '1' || val === 1 || val === true || val === 'true';
+      }
+
+      // Check Subcontractor Schedule Field (Template 54966)
+      if (tplId === 54966 || name === 'subcontractor schedule' || identifier === 'subcontractorschedule') {
+        subSchedule = a.value || a.text_value;
       }
     }
   }
 
-  let subSchedule = null;
-  if (Array.isArray(included)) {
-    const subField = included.find(item => {
-      if (item.type !== 'custom_field') return false;
-      const a = item.attributes || {};
-      return String(a.custom_field_template_id) === '54966' || 
-             a.name === 'Subcontractor Schedule' || 
-             a.identifier === 'SubcontractorSchedule';
-    });
+  // 2. Derive Live Overall Status
+  let overallStatus = 'UPCOMING';
+  const now = new Date();
+  const inspDt = rawDt ? new Date(rawDt) : null;
 
-    if (subField && subField.attributes) {
-      subSchedule = subField.attributes.value || subField.attributes.text_value;
-    }
+  if (isFinished) {
+    overallStatus = 'COMPLETE';
+  } else if (inspDt && !isNaN(inspDt.getTime()) && now >= inspDt) {
+    overallStatus = 'IN PROGRESS';
+  } else {
+    overallStatus = 'UPCOMING';
   }
 
   return {
@@ -620,9 +630,9 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
     </div>
   `;
 
-  let statusClass = 'status-pill-upcoming';
-  if (data.overallStatus === 'IN PROGRESS') statusClass = 'status-pill-progress';
-  else if (data.overallStatus === 'COMPLETE') statusClass = 'status-pill-complete';
+  let themeClass = 'status-theme-upcoming';
+  if (data.overallStatus === 'IN PROGRESS') themeClass = 'status-theme-progress';
+  else if (data.overallStatus === 'COMPLETE') themeClass = 'status-theme-complete';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -648,14 +658,14 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
           <div class="status-brand-sub">Engineering-Minded Inspections</div>
         </div>
       </div>
-      <div class="status-pill ${statusClass}">
+      <div class="status-pill ${themeClass}">
         <span class="status-pill-dot"></span>${data.overallStatus}
       </div>
     </div>
 
     <div class="status-card">
       <div class="status-card-header">
-        <div class="status-date-badge">
+        <div class="status-date-badge ${themeClass}">
           <div class="status-date-month">${data.badgeMonth}</div>
           <div class="status-date-day">${data.badgeDay}</div>
         </div>

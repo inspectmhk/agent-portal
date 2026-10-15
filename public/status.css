@@ -119,6 +119,41 @@ body.status-body {
 .status-pill-complete .status-pill-dot {
   background-color: #22C55E;
 }
+
+/* Dynamic Theme Colors for Pill & Date Badge */
+.status-theme-upcoming {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38BDF8;
+}
+.status-theme-upcoming .status-pill-dot,
+.status-theme-upcoming .status-date-month {
+  color: #38BDF8;
+  background-color: #38BDF8;
+}
+
+.status-theme-progress {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: #C8A251;
+}
+.status-theme-progress .status-pill-dot,
+.status-theme-progress .status-date-month {
+  color: #C8A251;
+  background-color: #C8A251;
+}
+
+.status-theme-complete {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22C55E;
+}
+.status-theme-complete .status-pill-dot,
+.status-theme-complete .status-date-month {
+  color: #22C55E;
+  background-color: #22C55E;
+}
+
 /* Inspection Content Card */
 .status-card {
   background: #141417;
