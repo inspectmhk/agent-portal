@@ -552,7 +552,55 @@ function createPortal(options = {}) {
     res.end(file.body);
   }
 
-  async function handleRequest(req, res) {
+//   async function handleRequest(req, res) {
+//     const startedAt = nowMs();
+//     let pathname = '<malformed>';
+//     let status = 500;
+//     try {
+//       let url;
+//       try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
+//       pathname = url.pathname;
+//       if (req.method === 'GET' && pathname === '/api/health') {
+//         sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
+//       }
+//       if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
+//         const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
+//         if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
+//         if (config.mode === 'live') {
+//           let grant;
+//           try {
+//             validatedPositiveDecimalId(connectionId, 'Spectora connection ID');
+//             grant = bearerToken(req);
+//             verifyGrant(grant, connectionId, config.signingSecret, { now: nowSeconds() });
+//           }
+//           catch (error) { status = error.statusCode || 401; sendJson(res, status, { error: error.message }); return; }
+//           const key = crypto.createHash('sha256').update(`${grant}:${connectionId}`).digest('hex');
+//           if (!allowRequest(key)) { sendJson(res, 429, { error: 'Rate limit exceeded' }); status = 429; return; }
+//         }
+//         const payload = await getAgentPayload(connectionId);
+//         if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
+//         sendJson(res, 200, payload); status = 200; return;
+//       }
+//       if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
+//       sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
+//     } catch (error) {
+//       status = Number(error.statusCode) || 500;
+//       if (!res.headersSent) sendJson(res, status, { error: error.message || 'Internal server error' });
+//       else res.destroy?.();
+//     } finally {
+//       const route = pathname === '/api/health'
+//         ? '/api/health'
+//         : (pathname.startsWith('/api/agent/')
+//             ? '/api/agent/:id'
+//             : (pathname.startsWith('/agent/') ? '/agent/:id' : '/:static-or-not-found'));
+//       log({ method: req.method, route, status, durationMs: Math.max(0, nowMs() - startedAt) });
+//     }
+//   }
+
+//   return { config, handleRequest, getAgentPayload };
+// }
+
+async function handleRequest(req, res) {
     const startedAt = nowMs();
     let pathname = '<malformed>';
     let status = 500;
@@ -560,9 +608,34 @@ function createPortal(options = {}) {
       let url;
       try { url = new URL(req.url, 'http://localhost'); } catch { sendJson(res, 400, { error: 'Malformed URL' }); status = 400; return; }
       pathname = url.pathname;
+
+      const host = String(req.headers.host || '').toLowerCase();
+      const isStatusSubdomain = host.startsWith('status.');
+      const slugMatch = pathname.match(/^\/(?:status\/)?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
+
+      // 1. PUBLIC STATUS ROUTE (status.inspectmhk.com or /status/:slug or /:slug)
+      if (req.method === 'GET' && (isStatusSubdomain || slugMatch)) {
+        const slug = slugMatch ? slugMatch[1] : pathname.slice(1).replace(/^status\//, '');
+        
+        if (slug) {
+          const data = await getPublicInspectionBySlug(slug, upstreamGet);
+          const html = renderPublicStatusHtml(data, config.branding);
+          status = data ? 200 : 404;
+          res.writeHead(status, headers({
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=60'
+          }));
+          res.end(html);
+          return;
+        }
+      }
+
+      // 2. HEALTH CHECK ROUTE
       if (req.method === 'GET' && pathname === '/api/health') {
         sendJson(res, 200, { status: 'ok', service: 'spectora-agent-portal', mode: config.mode }); status = 200; return;
       }
+
+      // 3. AGENT PORTAL API ROUTE
       if (req.method === 'GET' && pathname.startsWith('/api/agent/')) {
         const connectionId = pathname.slice('/api/agent/'.length).split('/')[0];
         if (!connectionId) { sendJson(res, 400, { error: 'Missing connection ID' }); status = 400; return; }
@@ -581,6 +654,8 @@ function createPortal(options = {}) {
         if (!payload) { sendJson(res, 404, { error: 'Agent not found' }); status = 404; return; }
         sendJson(res, 200, payload); status = 200; return;
       }
+
+      // 4. STATIC FILES & SINGLE PAGE APP ROUTE
       if (req.method === 'GET') { sendStatic(res, pathname); status = res.statusCode || res.status || 200; return; }
       sendJson(res, 405, { error: 'Method not allowed' }); status = 405;
     } catch (error) {
@@ -597,7 +672,186 @@ function createPortal(options = {}) {
     }
   }
 
-  return { config, handleRequest, getAgentPayload };
+async function getPublicInspectionBySlug(slug, upstreamGet) {
+  if (!slug || typeof slug !== 'string' || slug.length < 10) return null;
+
+  const endpoint = query('/v2/inspections', {
+    'filter[slug]': slug,
+    'include': 'custom_fields'
+  });
+
+  const response = await upstreamGet(endpoint);
+  const data = response.data || [];
+  if (!data.length) return null;
+
+  const insp = data[0];
+  const included = response.included || [];
+
+  return mapPublicStatusInspection(insp, included);
+}
+
+function mapPublicStatusInspection(insp, included = []) {
+  const attrs = insp?.attributes || {};
+  let formattedDate = '';
+
+  if (attrs.datetime) {
+    const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-').trim();
+    const parsed = new Date(cleanDatetime);
+    if (!isNaN(parsed.getTime())) {
+      formattedDate = parsed.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } else {
+      formattedDate = cleanDatetime.slice(0, 10);
+    }
+  }
+
+  // Extract subcontractor schedule string from template 54966 or custom field name
+  let subcontractorSchedule = '';
+  for (const item of included) {
+    if (item && item.type === 'custom_field') {
+      const itemAttrs = item.attributes || {};
+      const tplId = Number(itemAttrs.custom_field_template_id);
+      const name = String(itemAttrs.name || '').toLowerCase();
+      if (tplId === 54966 || name.includes('subcontractor')) {
+        if (itemAttrs.value) subcontractorSchedule = String(itemAttrs.value).trim();
+      }
+    }
+  }
+
+  return {
+    id: insp.id,
+    slug: attrs.slug,
+    location: attrs.property_address || attrs.full_address || 'Property Inspection',
+    fullAddress: attrs.full_address || '',
+    dateFormatted: formattedDate,
+    rawDatetime: attrs.datetime || null,
+    durationHours: Number(attrs.duration || 2),
+    status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
+    services: attrs.service_names || 'Home Inspection',
+    subcontractorSchedule: subcontractorSchedule
+  };
+}
+
+function renderPublicStatusHtml(data, branding) {
+  if (!data) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Inspection Not Found | ${branding.name}</title>
+  <style>
+    body { background: #0B0B0B; color: #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .card { background: #1A1A1E; border: 1px solid #2A2A30; border-radius: 12px; padding: 32px; max-width: 420px; text-align: center; }
+    h1 { font-size: 1.25rem; margin-bottom: 8px; color: #FFFFFF; }
+    p { color: #9CA3AF; font-size: 0.875rem; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Inspection Schedule Not Found</h1>
+    <p>The requested inspection link may be invalid or expired.</p>
+  </div>
+</body>
+</html>`;
+  }
+
+  // Parse Subcontractor Schedule string
+  const subItems = [];
+  if (data.subcontractorSchedule) {
+    const rawItems = data.subcontractorSchedule.split(/;|\n/).map(s => s.trim()).filter(Boolean);
+    for (const item of rawItems) {
+      const colonIdx = item.indexOf(':');
+      if (colonIdx !== -1) {
+        subItems.push({
+          service: item.slice(0, colonIdx).trim(),
+          scheduleStr: item.slice(colonIdx + 1).trim()
+        });
+      } else {
+        subItems.push({ service: 'Subcontractor', scheduleStr: item });
+      }
+    }
+  }
+
+  const rowsHtml = [
+    `<div class="row">
+      <span class="dot"></span>
+      <span class="label">Main Inspection: </span>
+      <span class="val">${data.dateFormatted}</span>
+    </div>`
+  ];
+
+  for (const sub of subItems) {
+    const valLower = sub.scheduleStr.toLowerCase();
+    let statusClass = 'val-default';
+    if (valLower.includes('pending')) statusClass = 'val-pending';
+    else if (valLower.includes('complete')) statusClass = 'val-complete';
+
+    rowsHtml.push(`
+      <div class="row">
+        <span class="dot"></span>
+        <span class="label">${sub.service}: </span>
+        <span class="val ${statusClass}">${sub.scheduleStr}</span>
+      </div>
+    `);
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Status: ${data.location} | ${branding.name}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: #0B0B0B; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; min-height: 100vh; padding: 24px 16px; }
+    .container { max-width: 520px; margin: 0 auto; }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #2A2A30; }
+    .header img { height: 2.25rem; width: auto; }
+    .brand-title { font-size: 1.125rem; font-weight: 700; color: #FFFFFF; }
+    .brand-sub { font-size: 0.8125rem; color: #9CA3AF; }
+    .card { background: #1A1A1E; border: 1px solid #2A2A30; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .address { font-size: 1.25rem; font-weight: 700; color: #FFFFFF; margin-bottom: 4px; }
+    .services { font-size: 0.875rem; color: #9CA3AF; margin-bottom: 16px; }
+    .divider { height: 1px; background: #2A2A30; margin: 16px 0; }
+    .row { display: flex; align-items: center; margin-bottom: 10px; font-size: 0.875rem; }
+    .dot { width: 6px; height: 6px; background-color: #9CA3AF; border-radius: 50%; display: inline-block; margin-right: 10px; flex-shrink: 0; }
+    .label { font-weight: 600; color: #FFFFFF; margin-right: 6px; }
+    .val { color: #9CA3AF; }
+    .val-pending { color: #EAB308; font-weight: 600; }
+    .val-complete { color: #22C55E; font-weight: 600; }
+    .footer { text-align: center; color: #6B7280; font-size: 0.75rem; margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="/assets/M300.png" alt="${branding.name}">
+      <div>
+        <div class="brand-title">${branding.name}</div>
+        <div class="brand-sub">Inspection Status Tracker</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="address">${data.location}</div>
+      <div class="services">${data.services}</div>
+      <div class="divider"></div>
+      ${rowsHtml.join('')}
+    </div>
+
+    <div class="footer">
+      Questions? Contact ${branding.name} at ${branding.phone}
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 function createServer(portal) {
