@@ -120,10 +120,11 @@ button:focus-visible,
 }
 
 .company-logo {
-  height: 2.5rem; /* Matches combined height of name + tagline */
+  height: 35px; /* Matches combined height of name + tagline */
   width: auto;
   object-fit: contain;
   display: block;
+  margin-top: 8px;
 }
 
 .company-tagline {
