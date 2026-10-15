@@ -160,7 +160,7 @@ function renderDashboard(data) {
   // Hero Section
   const avatar = el('img', {
     class: 'avatar',
-    src: agent.photoUrl || '/assets/mock-agent.svg',
+    src: agent.photoUrl || '/assets/M300.png',
     alt: `${agent.firstName} ${agent.lastName}`
   });
   app.append(
