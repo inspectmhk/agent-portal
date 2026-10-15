@@ -459,49 +459,50 @@ function loadStaticSnapshot(publicDir) {
   return files;
 }
 
-function mapPublicStatusInspection(insp, included = []) {
-  const attrs = insp?.attributes || {};
-  let formattedDate = '';
+function mapPublicStatusInspection(data, included) {
+  if (!data) return null;
+  const attrs = data.attributes || {};
 
-  if (attrs.datetime) {
-    const cleanDatetime = String(attrs.datetime).replace(/[\u2010-\u2015]/g, '-').trim();
-    const parsed = new Date(cleanDatetime);
-    if (!isNaN(parsed.getTime())) {
-      formattedDate = parsed.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } else {
-      formattedDate = cleanDatetime.slice(0, 10);
+  // Extract raw datetime string for calculations
+  const rawDt = attrs.datetime || attrs.scheduled_at || attrs.date;
+  let dateFormatted = 'TBD';
+  let badgeMonth = 'OCT';
+  let badgeDay = '23';
+  let timeRangeFormatted = 'TBD';
+
+  if (rawDt) {
+    const dt = new Date(rawDt);
+    if (!isNaN(dt.getTime())) {
+      badgeMonth = dt.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+      badgeDay = dt.getDate();
+
+      // Format time window (e.g., 8:00 AM - 10:00 AM)
+      const startStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const endDt = new Date(dt.getTime() + 2 * 60 * 60 * 1000); // 2 hour window
+      const endStr = endDt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+      timeRangeFormatted = `${startStr} – ${endStr}`;
     }
   }
 
-  // Extract subcontractor schedule string from template 54966 or custom field name
-  let subcontractorSchedule = '';
-  for (const item of included) {
-    if (item && item.type === 'custom_field') {
-      const itemAttrs = item.attributes || {};
-      const tplId = Number(itemAttrs.custom_field_template_id);
-      const name = String(itemAttrs.name || '').toLowerCase();
-      if (tplId === 54966 || name.includes('subcontractor')) {
-        if (itemAttrs.value) subcontractorSchedule = String(itemAttrs.value).trim();
-      }
+  // Find custom field 54966 for subcontractor schedule
+  let subSchedule = null;
+  if (Array.isArray(included)) {
+    const subField = included.find(
+      item => item.type === 'custom_fields' && String(item.id) === '54966'
+    );
+    if (subField && subField.attributes) {
+      subSchedule = subField.attributes.value || subField.attributes.text_value;
     }
   }
 
   return {
-    id: insp.id,
-    slug: attrs.slug,
-    location: attrs.property_address || attrs.full_address || 'Property Inspection',
-    fullAddress: attrs.full_address || '',
-    dateFormatted: formattedDate,
-    rawDatetime: attrs.datetime || null,
-    durationHours: Number(attrs.duration || 2),
-    status: attrs.canceled_at ? 'Canceled' : (attrs.published_at ? 'Report Published' : 'Scheduled'),
-    services: attrs.service_names || 'Home Inspection',
-    subcontractorSchedule: subcontractorSchedule
+    location: attrs.property_address || attrs.address || 'Inspection Property',
+    services: attrs.services_summary || attrs.service_names || 'Home Inspection',
+    timeRangeFormatted,
+    badgeMonth,
+    badgeDay,
+    subcontractorSchedule: subSchedule
   };
 }
 
@@ -515,11 +516,6 @@ function renderPublicStatusHtml(data, branding) {
   <meta name="robots" content="noindex, nofollow">
   <title>Inspection Not Found | ${branding.name}</title>
   <link rel="stylesheet" href="/status.css">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
-  <link rel="shortcut icon" href="/assets/favicon.ico">
-  <link rel="manifest" href="/site.webmanifest">
 </head>
 <body class="status-404-body">
   <div class="status-404-card">
@@ -551,7 +547,7 @@ function renderPublicStatusHtml(data, branding) {
     `<div class="status-row">
       <span class="status-dot"></span>
       <span class="status-label">Main Inspection:</span>
-      <span class="status-val">${data.dateFormatted}</span>
+      <span class="status-val">${data.timeRangeFormatted}</span>
     </div>`
   ];
 
@@ -582,7 +578,6 @@ function renderPublicStatusHtml(data, branding) {
 <body class="status-body">
   <div class="status-portal-shell">
     
-    <!-- Portal Matching Header -->
     <div class="status-header">
       <div class="status-brand-left">
         <img src="/assets/M300.png" alt="${branding.name}" class="status-logo">
@@ -594,10 +589,18 @@ function renderPublicStatusHtml(data, branding) {
       <div class="status-pill">INSPECTION STATUS</div>
     </div>
 
-    <!-- Inspection Details Card -->
     <div class="status-card">
-      <div class="status-address">${data.location}</div>
-      <div class="status-services">${data.services}</div>
+      <div class="status-card-header">
+        <div class="status-date-badge">
+          <div class="status-date-month">${data.badgeMonth}</div>
+          <div class="status-date-day">${data.badgeDay}</div>
+        </div>
+        <div class="status-address-group">
+          <div class="status-address">${data.location}</div>
+          <div class="status-services">${data.services}</div>
+        </div>
+      </div>
+
       <div class="status-divider"></div>
       ${rowsHtml.join('')}
     </div>

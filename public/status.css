@@ -152,3 +152,42 @@ body.status-body {
   font-size: 0.75rem;
   margin-top: 24px;
 }
+
+/* Card Header with Large Date Badge */
+.status-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.status-date-badge {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: center;
+  min-width: 58px;
+  flex-shrink: 0;
+}
+
+.status-date-month {
+  color: #38bdf8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.status-date-day {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.status-address-group {
+  flex-grow: 1;
+}
