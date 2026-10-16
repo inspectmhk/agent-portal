@@ -641,7 +641,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Status: ${data.location} | ${branding.name}</title>
-  <link rel="stylesheet" href="/status.css?12345">
+  <link rel="stylesheet" href="/status.css">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
@@ -658,19 +658,26 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
           <div class="status-brand-sub">Engineering-Minded Inspections</div>
         </div>
       </div>
-      <div class="status-pill ${themeClass}">
-        <span class="status-pill-dot"></span>${data.overallStatus}
-      </div>
+      <button type="button" class="status-share-btn" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : (navigator.clipboard.writeText(window.location.href), alert('Link copied to clipboard!'))" aria-label="Share status page">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+          <polyline points="16 6 12 2 8 6"></polyline>
+          <line x1="12" y1="2" x2="12" y2="15"></line>
+        </svg>
+      </button>
     </div>
 
     <div class="status-card">
       <div class="status-card-header">
-        <div class="status-date-badge ${themeClass}">
+        <div class="status-date-badge">
           <div class="status-date-month">${data.badgeMonth}</div>
           <div class="status-date-day">${data.badgeDay}</div>
         </div>
         <div class="status-address-group">
           <div class="status-address">${data.location}</div>
+          <div class="status-pill ${themeClass}">
+            <span class="status-pill-dot"></span>${data.overallStatus}
+          </div>
           <div class="status-services">${data.services}</div>
         </div>
       </div>
@@ -679,7 +686,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
       ${rowsHtml.join('')}
       <div class="status-divider"></div>
       ${qrSectionHtml}
-      </div>
+    </div>
 
     <div class="status-footer">
       Questions? Contact ${branding.name} at ${branding.phone}
