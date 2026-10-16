@@ -835,8 +835,16 @@ function createPortal(options = {}) {
         const slug = slugMatch ? slugMatch[1] : pathname.slice(1).replace(/^status\//, '');
         
         if (slug) {
-          const proto = req.headers['x-forwarded-proto'] || 'https';
-          const currentUrl = `${proto}://${host}/${slug}`;
+          // Enforce canonical status domain for production QR links
+          let baseUrl = 'https://status.inspectmhk.com';
+          
+          // Keep raw staging host when testing on staging run.app
+          if (host.includes('run.app') && host.includes('staging')) {
+            const proto = req.headers['x-forwarded-proto'] || 'https';
+            baseUrl = `${proto}://${host}`;
+          }
+
+          const currentUrl = `${baseUrl}/${slug}`;
 
           const data = await getPublicInspectionBySlug(slug, upstreamGet);
           const html = renderPublicStatusHtml(data, config.branding, currentUrl);
