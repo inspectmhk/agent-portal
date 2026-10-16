@@ -215,9 +215,10 @@ body.status-body {
   border-color: rgba(56, 189, 248, 0.3) !important;
   color: #38BDF8 !important;
 }
-.status-theme-upcoming .status-pill-dot,
 .status-theme-upcoming .status-date-month {
   color: #38BDF8 !important;
+}
+.status-theme-upcoming .status-pill-dot {
   background-color: #38BDF8 !important;
 }
 
@@ -226,9 +227,10 @@ body.status-body {
   border-color: rgba(212, 175, 55, 0.3) !important;
   color: #C8A251 !important;
 }
-.status-theme-progress .status-pill-dot,
 .status-theme-progress .status-date-month {
   color: #C8A251 !important;
+}
+.status-theme-progress .status-pill-dot {
   background-color: #C8A251 !important;
 }
 
@@ -237,9 +239,10 @@ body.status-body {
   border-color: rgba(34, 197, 94, 0.3) !important;
   color: #22C55E !important;
 }
-.status-theme-complete .status-pill-dot,
 .status-theme-complete .status-date-month {
   color: #22C55E !important;
+}
+.status-theme-complete .status-pill-dot {
   background-color: #22C55E !important;
 }
 
