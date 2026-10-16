@@ -520,9 +520,14 @@ function mapPublicStatusInspection(data, included) {
     overallStatus = 'UPCOMING';
   }
 
+  // Join primary service names and add-on service names explicitly
+  const primaryServices = attrs.service_names || '';
+  const addOnServices = attrs.service_add_on_names || '';
+  const fullServices = [primaryServices, addOnServices].filter(Boolean).join(' + ');
+
   return {
     location: attrs.property_address || attrs.address || 'Inspection Property',
-    services: attrs.services_summary || attrs.service_names || 'Home Inspection',
+    services: fullServices || attrs.service_names || 'Home Inspection',
     timeRangeFormatted,
     badgeMonth,
     badgeDay,
@@ -625,7 +630,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
       <img src="${qrUrl}" alt="Scan to share inspection status" class="status-qr-img" width="120" height="120">
       <div class="status-qr-text">
         <div class="status-qr-title">Scan to Share Status</div>
-        <div class="status-qr-sub">Instant access for buyers, agents & subs</div>
+        <div class="status-qr-sub">Provides live updates for Clients & Agents</div>
       </div>
     </div>
   `;
@@ -641,7 +646,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Inspection Status: ${data.location} | ${branding.name}</title>
-  <link rel="stylesheet" href="/status.css">
+  <link rel="stylesheet" href="/status.css?1">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
