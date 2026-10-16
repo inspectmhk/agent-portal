@@ -24,7 +24,7 @@ const MIME_TYPES = {
 };
 
 const SECURITY_HEADERS = Object.freeze({
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' https://cdn.spectora.com https://quickchart.io; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.spectora.com https://quickchart.io; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
@@ -640,7 +640,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Status: ${data.location} | ${branding.name}</title>
+  <title>Inspection Status: ${data.location} | ${branding.name}</title>
   <link rel="stylesheet" href="/status.css">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
@@ -658,7 +658,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
           <div class="status-brand-sub">Engineering-Minded Inspections</div>
         </div>
       </div>
-      <button type="button" class="status-share-btn" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : (navigator.clipboard.writeText(window.location.href), alert('Link copied to clipboard!'))" aria-label="Share status page">
+      <button type="button" id="statusShareBtn" class="status-share-btn" aria-label="Share status page">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
           <polyline points="16 6 12 2 8 6"></polyline>
@@ -693,6 +693,7 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
     </div>
 
   </div>
+  <script src="/status.js" defer></script>
 </body>
 </html>`;
 }

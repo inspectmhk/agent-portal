@@ -67,27 +67,26 @@ body.status-body {
   white-space: nowrap;
 }
 
-/* Base Pill Styling */
+/* Compact & Proportional Status Pill */
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.625rem;
+  gap: 5px;
+  font-size: 0.5625rem; /* 9px */
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 6px 10px;
-  border-radius: 12px;
-  text-align: center;
-  line-height: 1.2;
+  padding: 3px 8px;
+  border-radius: 6px;
+  line-height: 1;
   flex-shrink: 0;
   white-space: nowrap;
-  border: 1px solid transparent;
+  width: fit-content;
 }
 
 .status-pill-dot {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -235,7 +234,7 @@ body.status-body {
 
 /* Status Pill inside Address Group */
 .status-address-group .status-pill {
-  margin: 6px 0 8px 0;
+  margin: 4px 0 6px 0;
 }
 
 /* Theme Classes (Applies directly to .status-pill) */
