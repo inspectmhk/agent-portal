@@ -400,6 +400,39 @@ function query(pathname, filters) {
   return `${pathname}?${params.toString().replace(/%5B/g, '[').replace(/%5D/g, ']')}`;
 }
 
+function patchSpectoraCustomField(config, customFieldId, value) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`/v2/custom_fields/${customFieldId}`, SPECTORA_ORIGIN);
+    const body = JSON.stringify({
+      data: {
+        id: String(customFieldId),
+        type: 'custom_field',
+        attributes: { value: String(value) }
+      }
+    });
+
+    const request = https.request(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      },
+      timeout: config.upstreamTimeoutMs
+    }, response => {
+      if (response.statusCode < 200 || response.statusCode > 299) {
+        response.resume();
+        return reject(new Error(`Spectora API PATCH returned ${response.statusCode}`));
+      }
+      resolve();
+    });
+
+    request.on('error', reject);
+    request.write(body);
+    request.end();
+  });
+}
+
 function createRateLimiter(config, nowMs) {
   const buckets = new Map();
   return key => {
@@ -856,6 +889,64 @@ function createPortal(options = {}) {
           res.end(html);
           return;
         }
+      }
+
+      // WEBHOOK ROUTE: POST /webhook
+      if (req.method === 'POST' && pathname === '/webhook') {
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const rawBody = Buffer.concat(chunks).toString('utf8');
+
+        let payload = {};
+        try {
+          payload = JSON.parse(rawBody);
+        } catch {
+          sendJson(res, 400, { error: 'Invalid JSON payload' });
+          status = 400;
+          return;
+        }
+
+        const inspection = payload.data || payload.inspection || payload;
+        const inspectionId = inspection.id;
+        const slug = inspection.attributes?.slug || inspection.slug || inspectionId;
+
+        if (!inspectionId || !slug) {
+          sendJson(res, 422, { error: 'Missing inspection ID or slug in webhook payload' });
+          status = 422;
+          return;
+        }
+
+        try {
+          const detailEndpoint = query(`/v2/inspections/${inspectionId}`, { include: 'custom_fields' });
+          const detailRes = await upstreamGet(detailEndpoint);
+          const included = detailRes.included || [];
+
+          let uuidCustomFieldId = null;
+          for (const item of included) {
+            if (item.type !== 'custom_field') continue;
+            const a = item.attributes || {};
+            const name = String(a.name || '').toLowerCase();
+            const identifier = String(a.identifier || '').toLowerCase();
+
+            if (name === 'uuid' || identifier === 'uuid') {
+              uuidCustomFieldId = item.id;
+              break;
+            }
+          }
+
+          if (uuidCustomFieldId) {
+            await patchSpectoraCustomField(config, uuidCustomFieldId, slug);
+            sendJson(res, 200, { status: 'success', message: 'UUID updated', inspectionId, slug });
+            status = 200;
+          } else {
+            sendJson(res, 200, { status: 'ignored', message: 'UUID custom field not found on inspection', inspectionId });
+            status = 200;
+          }
+        } catch (err) {
+          sendJson(res, 500, { error: 'Failed to update UUID in Spectora', details: err.message });
+          status = 500;
+        }
+        return;
       }
 
       // 2. HEALTH CHECK ROUTE
