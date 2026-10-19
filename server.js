@@ -402,11 +402,12 @@ function query(pathname, filters) {
 
 function patchSpectoraCustomField(config, fieldId, value) {
   return new Promise((resolve, reject) => {
-    const url = new URL(`/v2/custom_fields/${fieldId}`, SPECTORA_ORIGIN);
+    // Target custom_field_entries endpoint for inspection-specific custom fields
+    const url = new URL(`/v2/custom_field_entries/${fieldId}`, SPECTORA_ORIGIN);
     const body = JSON.stringify({
       data: {
         id: String(fieldId),
-        type: 'custom_field',
+        type: 'custom_field_entry',
         attributes: { value: String(value) }
       }
     });
