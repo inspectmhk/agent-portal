@@ -400,30 +400,19 @@ function query(pathname, filters) {
   return `${pathname}?${params.toString().replace(/%5B/g, '[').replace(/%5D/g, ']')}`;
 }
 
-function patchSpectoraCustomField(config, inspectionId, customFieldId, value) {
+// Helper to patch Spectora custom field entry or inspection attribute
+function patchSpectoraCustomField(config, customFieldId, value) {
   return new Promise((resolve, reject) => {
-    const url = new URL(`/v2/inspections/${inspectionId}`, SPECTORA_ORIGIN);
-    
+    // Spectora custom field entry PATCH endpoint
+    const url = new URL(`/v2/custom_fields/${customFieldId}`, SPECTORA_ORIGIN);
     const body = JSON.stringify({
       data: {
-        id: String(inspectionId),
-        type: 'inspection',
-        attributes: {
-          custom_fields: [
-            {
-              id: String(customFieldId),
-              value: String(value)
-            }
-          ]
-        }
+        id: String(customFieldId),
+        type: 'custom_field',
+        attributes: { value: String(value) }
       },
-      inspection: {
-        custom_fields_attributes: [
-          {
-            id: String(customFieldId),
-            value: String(value)
-          }
-        ]
+      custom_field: {
+        value: String(value)
       }
     });
 
@@ -441,7 +430,7 @@ function patchSpectoraCustomField(config, inspectionId, customFieldId, value) {
       response.on('data', chunk => resBody += chunk);
       response.on('end', () => {
         if (response.statusCode < 200 || response.statusCode > 299) {
-          return reject(new Error(`Spectora API PATCH inspection ${inspectionId} failed with status ${response.statusCode}: ${resBody}`));
+          return reject(new Error(`Spectora API PATCH returned ${response.statusCode}: ${resBody}`));
         }
         resolve();
       });
@@ -911,16 +900,12 @@ function createPortal(options = {}) {
         }
       }
 
-      // WEBHOOK ROUTE: POST /webhook or /webhook/
+      // WEBHOOK ROUTE: POST /webhook
       const cleanPath = pathname.replace(/\/$/, '');
       if (req.method === 'POST' && cleanPath === '/webhook') {
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
         const rawBody = Buffer.concat(chunks).toString('utf8');
-
-        console.log('=== INCOMING SPECTORA WEBHOOK PAYLOAD ===');
-        console.log(rawBody);
-        console.log('=========================================');
 
         let payload = {};
         try {
@@ -932,28 +917,32 @@ function createPortal(options = {}) {
           return;
         }
 
-        const dataObj = payload.data || payload.inspection || payload.event?.data || payload;
-        const inspectionId = dataObj.id || payload.id || payload.inspection_id;
-        const slug = dataObj.attributes?.slug || dataObj.slug || payload.slug || inspectionId;
+        // 1. Precise JSON:API extraction from Spectora Webhook Payload
+        const inspObj = payload.inspection || payload.data || payload;
+        const inspAttrs = inspObj.attributes || {};
 
-        if (!inspectionId) {
-          console.warn('Webhook payload missing inspection ID. Keys:', Object.keys(payload));
-          sendJson(res, 200, { status: 'logged_without_id', keys: Object.keys(payload) });
-          status = 200;
+        const inspectionId = inspObj.id || payload.id;
+        const slug = inspAttrs.slug || inspObj.slug || payload.slug;
+
+        console.log(`Webhook Received -> Inspection ID: ${inspectionId}, Slug: ${slug}`);
+
+        if (!inspectionId || !slug) {
+          console.warn('Webhook payload missing ID or slug', { inspectionId, slug });
+          sendJson(res, 422, { error: 'Missing inspection ID or slug in payload' });
+          status = 422;
           return;
         }
 
         try {
+          // 2. Fetch full inspection details including custom fields from Spectora API
           const detailEndpoint = query(`/v2/inspections/${inspectionId}`, { include: 'custom_fields' });
           const detailRes = await upstreamGet(detailEndpoint);
-          
-          const mainInspection = Array.isArray(detailRes.data) ? detailRes.data[0] : (detailRes.data || {});
-          const inspSlug = mainInspection.attributes?.slug || slug;
           const included = detailRes.included || [];
 
           let uuidCustomFieldId = null;
+
+          // Search included entities for the "UUID" custom field
           for (const item of included) {
-            if (item.type !== 'custom_field' && item.type !== 'custom_field_entry') continue;
             const a = item.attributes || {};
             const name = String(a.name || '').toLowerCase();
             const identifier = String(a.identifier || '').toLowerCase();
@@ -964,21 +953,39 @@ function createPortal(options = {}) {
             }
           }
 
+          // Fallback: If not found in inspection includes, query company custom fields
+          if (!uuidCustomFieldId) {
+            console.log('UUID field not found in inspection includes. Querying company custom fields...');
+            const customFieldsEndpoint = query('/v2/custom_fields');
+            const customFieldsRes = await upstreamGet(customFieldsEndpoint);
+            const cfData = customFieldsRes.data || customFieldsRes.included || [];
+
+            for (const item of cfData) {
+              const a = item.attributes || item;
+              const name = String(a.name || '').toLowerCase();
+              const identifier = String(a.identifier || '').toLowerCase();
+
+              if (name === 'uuid' || identifier === 'uuid') {
+                uuidCustomFieldId = item.id;
+                break;
+              }
+            }
+          }
+
           if (uuidCustomFieldId) {
-            console.log(`Found UUID field ID ${uuidCustomFieldId} on inspection ${inspectionId}. Patching...`);
-            await patchSpectoraCustomField(config, inspectionId, uuidCustomFieldId, inspSlug);
-            console.log(`Successfully updated UUID for inspection ${inspectionId}`);
-            sendJson(res, 200, { status: 'success', message: 'UUID updated', inspectionId, slug: inspSlug });
+            console.log(`Updating UUID field (${uuidCustomFieldId}) with slug: ${slug}`);
+            await patchSpectoraCustomField(config, uuidCustomFieldId, slug);
+            sendJson(res, 200, { status: 'success', message: 'UUID custom field updated', inspectionId, slug, fieldId: uuidCustomFieldId });
             status = 200;
           } else {
-            console.warn(`UUID field not found on inspection ${inspectionId}`);
-            sendJson(res, 200, { status: 'ignored', message: 'UUID custom field not found', inspectionId });
+            console.warn(`UUID custom field definition not found in Spectora account.`);
+            sendJson(res, 200, { status: 'ignored', message: 'UUID custom field definition not found', inspectionId });
             status = 200;
           }
         } catch (err) {
-          console.error('Webhook processing error:', err.message, err.stack);
-          sendJson(res, 200, { status: 'error', message: err.message, payload });
-          status = 200;
+          console.error('Webhook execution error:', err.message, err.stack);
+          sendJson(res, 500, { error: 'Failed to process webhook', details: err.message });
+          status = 500;
         }
         return;
       }
