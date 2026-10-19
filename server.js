@@ -400,19 +400,22 @@ function query(pathname, filters) {
   return `${pathname}?${params.toString().replace(/%5B/g, '[').replace(/%5D/g, ']')}`;
 }
 
-// Helper to patch Spectora custom field entry or inspection attribute
-function patchSpectoraCustomField(config, customFieldId, value) {
+// Helper: Patch Spectora Custom Field Definition / Value
+function patchSpectoraCustomField(config, fieldId, value) {
   return new Promise((resolve, reject) => {
-    // Spectora custom field entry PATCH endpoint
-    const url = new URL(`/v2/custom_fields/${customFieldId}`, SPECTORA_ORIGIN);
+    const url = new URL(`/v2/custom_fields/${fieldId}`, SPECTORA_ORIGIN);
+    
+    // Spectora expects nested custom_field attributes
     const body = JSON.stringify({
-      data: {
-        id: String(customFieldId),
-        type: 'custom_field',
-        attributes: { value: String(value) }
-      },
       custom_field: {
         value: String(value)
+      },
+      data: {
+        id: String(fieldId),
+        type: 'custom_field',
+        attributes: {
+          value: String(value)
+        }
       }
     });
 
@@ -430,9 +433,9 @@ function patchSpectoraCustomField(config, customFieldId, value) {
       response.on('data', chunk => resBody += chunk);
       response.on('end', () => {
         if (response.statusCode < 200 || response.statusCode > 299) {
-          return reject(new Error(`Spectora API PATCH returned ${response.statusCode}: ${resBody}`));
+          return reject(new Error(`Spectora API returned HTTP ${response.statusCode}: ${resBody}`));
         }
-        resolve();
+        resolve(resBody);
       });
     });
 
@@ -911,81 +914,85 @@ function createPortal(options = {}) {
         try {
           payload = JSON.parse(rawBody);
         } catch (err) {
-          console.error('Webhook payload parse error:', err.message);
           sendJson(res, 400, { error: 'Invalid JSON payload' });
           status = 400;
           return;
         }
 
-        // 1. Precise JSON:API extraction from Spectora Webhook Payload
+        // Extract inspection ID & unique slug from Spectora payload
         const inspObj = payload.inspection || payload.data || payload;
         const inspAttrs = inspObj.attributes || {};
-
         const inspectionId = inspObj.id || payload.id;
         const slug = inspAttrs.slug || inspObj.slug || payload.slug;
 
-        console.log(`Webhook Received -> Inspection ID: ${inspectionId}, Slug: ${slug}`);
-
         if (!inspectionId || !slug) {
-          console.warn('Webhook payload missing ID or slug', { inspectionId, slug });
-          sendJson(res, 422, { error: 'Missing inspection ID or slug in payload' });
-          status = 422;
+          sendJson(res, 200, { status: 'ignored', reason: 'Missing inspection ID or slug', inspectionId, slug });
+          status = 200;
           return;
         }
 
         try {
-          // 2. Fetch full inspection details including custom fields from Spectora API
+          // Fetch full inspection from Spectora API with custom fields
           const detailEndpoint = query(`/v2/inspections/${inspectionId}`, { include: 'custom_fields' });
           const detailRes = await upstreamGet(detailEndpoint);
           const included = detailRes.included || [];
 
-          let uuidCustomFieldId = null;
+          let uuidFieldId = null;
 
-          // Search included entities for the "UUID" custom field
+          // Look for "UUID" field in inspection includes
           for (const item of included) {
             const a = item.attributes || {};
             const name = String(a.name || '').toLowerCase();
             const identifier = String(a.identifier || '').toLowerCase();
 
             if (name === 'uuid' || identifier === 'uuid') {
-              uuidCustomFieldId = item.id;
+              uuidFieldId = item.id;
               break;
             }
           }
 
-          // Fallback: If not found in inspection includes, query company custom fields
-          if (!uuidCustomFieldId) {
-            console.log('UUID field not found in inspection includes. Querying company custom fields...');
-            const customFieldsEndpoint = query('/v2/custom_fields');
-            const customFieldsRes = await upstreamGet(customFieldsEndpoint);
-            const cfData = customFieldsRes.data || customFieldsRes.included || [];
+          // Fallback: Query company template custom fields if not in includes
+          if (!uuidFieldId) {
+            const cfEndpoint = query('/v2/custom_fields');
+            const cfRes = await upstreamGet(cfEndpoint);
+            const cfList = cfRes.data || cfRes.included || [];
 
-            for (const item of cfData) {
+            for (const item of cfList) {
               const a = item.attributes || item;
               const name = String(a.name || '').toLowerCase();
               const identifier = String(a.identifier || '').toLowerCase();
 
               if (name === 'uuid' || identifier === 'uuid') {
-                uuidCustomFieldId = item.id;
+                uuidFieldId = item.id;
                 break;
               }
             }
           }
 
-          if (uuidCustomFieldId) {
-            console.log(`Updating UUID field (${uuidCustomFieldId}) with slug: ${slug}`);
-            await patchSpectoraCustomField(config, uuidCustomFieldId, slug);
-            sendJson(res, 200, { status: 'success', message: 'UUID custom field updated', inspectionId, slug, fieldId: uuidCustomFieldId });
+          if (uuidFieldId) {
+            const patchResult = await patchSpectoraCustomField(config, uuidFieldId, slug);
+            sendJson(res, 200, { 
+              status: 'success', 
+              message: 'UUID field updated successfully', 
+              inspectionId, 
+              slug, 
+              fieldId: uuidFieldId,
+              spectoraResponse: patchResult 
+            });
             status = 200;
           } else {
-            console.warn(`UUID custom field definition not found in Spectora account.`);
-            sendJson(res, 200, { status: 'ignored', message: 'UUID custom field definition not found', inspectionId });
+            sendJson(res, 200, { status: 'ignored', reason: 'UUID field definition not found in Spectora', inspectionId });
             status = 200;
           }
         } catch (err) {
-          console.error('Webhook execution error:', err.message, err.stack);
-          sendJson(res, 500, { error: 'Failed to process webhook', details: err.message });
-          status = 500;
+          // Send back 200 with error details so Spectora UI shows exact failure reason
+          sendJson(res, 200, { 
+            status: 'error', 
+            error: err.message, 
+            inspectionId, 
+            slug 
+          });
+          status = 200;
         }
         return;
       }
