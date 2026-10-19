@@ -902,30 +902,33 @@ function createPortal(options = {}) {
         for await (const chunk of req) chunks.push(chunk);
         const rawBody = Buffer.concat(chunks).toString('utf8');
 
+        // Log the complete raw incoming body from Spectora
+        console.log('=== INCOMING SPECTORA WEBHOOK PAYLOAD ===');
+        console.log(rawBody);
+        console.log('=========================================');
+
         let payload = {};
         try {
           payload = JSON.parse(rawBody);
         } catch (err) {
-          log({ level: 'error', message: 'Webhook malformed JSON', error: err.message });
-          sendJson(res, 400, { error: 'Invalid JSON payload' });
+          console.error('Webhook payload parse error:', err.message);
+          sendJson(res, 400, { error: 'Invalid JSON payload', raw: rawBody });
           status = 400;
           return;
         }
 
-        // 1. Safely extract Inspection ID & Slug across Spectora webhook structures
         const dataObj = payload.data || payload.inspection || payload.event?.data || payload;
         const inspectionId = dataObj.id || payload.id || payload.inspection_id;
         const slug = dataObj.attributes?.slug || dataObj.slug || payload.slug || inspectionId;
 
         if (!inspectionId) {
-          log({ level: 'warn', message: 'Webhook payload missing inspection ID', payloadKeys: Object.keys(payload) });
-          sendJson(res, 422, { error: 'Missing inspection ID in webhook payload' });
-          status = 422;
+          console.warn('Webhook payload missing inspection ID. Received keys:', Object.keys(payload));
+          sendJson(res, 200, { status: 'logged_without_id', keys: Object.keys(payload) });
+          status = 200;
           return;
         }
 
         try {
-          // 2. Fetch inspection from Spectora API to verify custom fields
           const detailEndpoint = query(`/v2/inspections/${inspectionId}`, { include: 'custom_fields' });
           const detailRes = await upstreamGet(detailEndpoint);
           
@@ -933,7 +936,8 @@ function createPortal(options = {}) {
           const inspSlug = mainInspection.attributes?.slug || slug;
           const included = detailRes.included || [];
 
-          // 3. Find custom field matching "UUID"
+          console.log(`Fetched Inspection ${inspectionId}. Slug: ${inspSlug}. Custom fields count: ${included.length}`);
+
           let uuidCustomFieldId = null;
           for (const item of included) {
             if (item.type !== 'custom_field' && item.type !== 'custom_field_entry') continue;
@@ -948,20 +952,21 @@ function createPortal(options = {}) {
           }
 
           if (uuidCustomFieldId) {
+            console.log(`Found UUID custom field ID: ${uuidCustomFieldId}. Attempting patch...`);
             await patchSpectoraCustomField(config, uuidCustomFieldId, inspSlug);
-            log({ level: 'info', message: 'Successfully updated UUID field', inspectionId, slug: inspSlug });
+            console.log(`Successfully patched UUID for inspection ${inspectionId}`);
             sendJson(res, 200, { status: 'success', message: 'UUID updated', inspectionId, slug: inspSlug });
             status = 200;
           } else {
-            log({ level: 'info', message: 'UUID field not found on inspection', inspectionId });
+            console.warn(`UUID field not found on inspection ${inspectionId}`);
             sendJson(res, 200, { status: 'ignored', message: 'UUID custom field not found on inspection', inspectionId });
             status = 200;
           }
         } catch (err) {
-          const errMsg = err.message || 'Unknown webhook processing error';
-          log({ level: 'error', message: 'Webhook processing exception', error: errMsg, stack: err.stack });
-          sendJson(res, 500, { error: 'Failed to update UUID in Spectora', details: errMsg });
-          status = 500;
+          console.error('Webhook processing exception:', err.message, err.stack);
+          // Return 200 with error payload during debugging so Spectora logs complete output
+          sendJson(res, 200, { status: 'error', message: err.message, payload });
+          status = 200;
         }
         return;
       }
