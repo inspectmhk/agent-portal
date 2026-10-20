@@ -703,45 +703,6 @@ function renderPublicStatusHtml(data, branding, currentUrl = '') {
 </html>`;
 }
 
-// Helper to patch Spectora Custom Field Definition / Value
-function patchSpectoraCustomField(config, fieldId, value) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(`/v2/custom_fields/${fieldId}`, SPECTORA_ORIGIN);
-    const body = JSON.stringify({
-      custom_field: { value: String(value) },
-      data: {
-        id: String(fieldId),
-        type: 'custom_field',
-        attributes: { value: String(value) }
-      }
-    });
-
-    const request = https.request(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      },
-      timeout: config.upstreamTimeoutMs
-    }, response => {
-      let resBody = '';
-      response.on('data', chunk => resBody += chunk);
-      response.on('end', () => {
-        if (response.statusCode < 200 || response.statusCode > 299) {
-          return reject(new Error(`Spectora API HTTP ${response.statusCode}: ${resBody}`));
-        }
-        resolve(resBody);
-      });
-    });
-
-    request.on('error', reject);
-    request.write(body);
-    request.end();
-  });
-}
-
 function createPortal(options = {}) {
   const config = createConfig(options.env || process.env);
   const staticFiles = loadStaticSnapshot(options.publicDir || PUBLIC_DIR);
@@ -856,91 +817,9 @@ function createPortal(options = {}) {
     }
   }
 
-  async function handleRequest(req, res) {
-    // Parse URL directly to eliminate query params or trailing slash mismatch
-    const reqUrl = req.url || '';
-    const pathname = reqUrl.split('?')[0].replace(/\/$/, '') || '/';
-
-    // DIRECT OVERRIDE: Catch /webhook POST requests before ANY static or fallback routing
-    if (req.method === 'POST' && (pathname === '/webhook' || reqUrl.includes('/webhook'))) {
-      console.log(`[WEBHOOK HIT] Method: ${req.method}, URL: ${req.url}`);
-      
-      const chunks = [];
-      for await (const chunk of req) chunks.push(chunk);
-      const rawBody = Buffer.concat(chunks).toString('utf8');
-
-      console.log('=== RAW INCOMING SPECTORA PAYLOAD ===');
-      console.log(rawBody);
-
-      let payload = {};
-      try {
-        payload = JSON.parse(rawBody);
-      } catch (err) {
-        return sendJson(res, 400, { error: 'Invalid JSON payload' });
-      }
-
-      const inspObj = payload.inspection || payload.data || payload;
-      const inspAttrs = inspObj.attributes || {};
-      const inspectionId = inspObj.id || payload.id;
-      const slug = inspAttrs.slug || inspObj.slug || payload.slug;
-
-      console.log(`Extracted Inspection ID: ${inspectionId}, Slug: ${slug}`);
-
-      if (!inspectionId || !slug) {
-        return sendJson(res, 200, { status: 'ignored', reason: 'Missing ID or slug', inspectionId, slug });
-      }
-
-      try {
-        // Query Spectora API for inspection custom fields
-        const detailEndpoint = query(`/v2/inspections/${inspectionId}`, { include: 'custom_fields' });
-        const detailRes = await upstreamGet(detailEndpoint);
-        const included = detailRes.included || [];
-
-        let uuidFieldId = null;
-        for (const item of included) {
-          const a = item.attributes || {};
-          const name = String(a.name || '').toLowerCase();
-          const identifier = String(a.identifier || '').toLowerCase();
-
-          if (name === 'uuid' || identifier === 'uuid') {
-            uuidFieldId = item.id;
-            break;
-          }
-        }
-
-        if (!uuidFieldId) {
-          console.log('Querying fallback company custom fields endpoint...');
-          const cfEndpoint = query('/v2/custom_fields');
-          const cfRes = await upstreamGet(cfEndpoint);
-          const cfList = cfRes.data || cfRes.included || [];
-
-          for (const item of cfList) {
-            const a = item.attributes || item;
-            const name = String(a.name || '').toLowerCase();
-            const identifier = String(a.identifier || '').toLowerCase();
-
-            if (name === 'uuid' || identifier === 'uuid') {
-              uuidFieldId = item.id;
-              break;
-            }
-          }
-        }
-
-        if (uuidFieldId) {
-          console.log(`Patching field ${uuidFieldId} with slug ${slug}...`);
-          const patchRes = await patchSpectoraCustomField(config, uuidFieldId, slug);
-          return sendJson(res, 200, { status: 'success', inspectionId, slug, fieldId: uuidFieldId });
-        } else {
-          return sendJson(res, 200, { status: 'ignored', reason: 'UUID field not found on Spectora account', inspectionId });
-        }
-      } catch (err) {
-        console.error('Webhook execution failed:', err.message);
-        return sendJson(res, 200, { status: 'error', message: err.message, inspectionId, slug });
-      }
-    }
-
+async function handleRequest(req, res) {
     const startedAt = nowMs();
-    pathname = '<malformed>';
+    let pathname = '<malformed>';
     let status = 500;
     try {
       let url;
