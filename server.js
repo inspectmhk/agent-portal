@@ -940,7 +940,7 @@ function createPortal(options = {}) {
     }
 
     const startedAt = nowMs();
-    let pathname = '<malformed>';
+    pathname = '<malformed>';
     let status = 500;
     try {
       let url;
