@@ -466,23 +466,39 @@ function mapPublicStatusInspection(data, included) {
   const rawDt = attrs.datetime || attrs.scheduled_at || attrs.date;
   let timeRangeFormatted = 'TBD';
   let badgeMonth = 'OCT';
-  let badgeDay = '23';
+  let badgeDay = '26';
 
   if (rawDt) {
     const dt = new Date(rawDt);
     if (!isNaN(dt.getTime())) {
-      badgeMonth = dt.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-      badgeDay = dt.getDate();
+      // Force Central Time Zone (America/Chicago) for accurate local display
+      const tz = 'America/Chicago';
+      
+      badgeMonth = dt.toLocaleDateString('en-US', { month: 'short', timeZone: tz }).toUpperCase();
+      badgeDay = dt.toLocaleDateString('en-US', { day: 'numeric', timeZone: tz });
 
-      const startStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      const endDt = new Date(dt.getTime() + 2 * 60 * 60 * 1000);
-      const endStr = endDt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const startStr = dt.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true, 
+        timeZone: tz 
+      });
+
+      // Use Spectora's actual duration attribute (default to 3.25 hours if unspecified)
+      const durationHours = Number(attrs.duration) || 3.25;
+      const endDt = new Date(dt.getTime() + durationHours * 60 * 60 * 1000);
+      const endStr = endDt.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true, 
+        timeZone: tz 
+      });
 
       timeRangeFormatted = `${startStr} – ${endStr}`;
     }
   }
 
-  // 1. Extract Finished Custom Field & Subcontractor Schedule
+  // Extract Finished Custom Field & Subcontractor Schedule
   let isFinished = false;
   let subSchedule = null;
 
@@ -494,20 +510,17 @@ function mapPublicStatusInspection(data, included) {
       const name = String(a.name || '').toLowerCase();
       const identifier = String(a.identifier || '').toLowerCase();
 
-      // Check Finished Field (Template 47540)
       if (tplId === 47540 || name === 'finished' || identifier === 'finished') {
         const val = a.value;
         isFinished = val === '1' || val === 1 || val === true || val === 'true';
       }
 
-      // Check Subcontractor Schedule Field (Template 54966)
       if (tplId === 54966 || name === 'subcontractor schedule' || identifier === 'subcontractorschedule') {
         subSchedule = a.value || a.text_value;
       }
     }
   }
 
-  // 2. Derive Live Overall Status
   let overallStatus = 'UPCOMING';
   const now = new Date();
   const inspDt = rawDt ? new Date(rawDt) : null;
@@ -520,7 +533,6 @@ function mapPublicStatusInspection(data, included) {
     overallStatus = 'UPCOMING';
   }
 
-  // Join primary service names and add-on service names explicitly
   const primaryServices = attrs.service_names || '';
   const addOnServices = attrs.service_add_on_names || '';
   const fullServices = [primaryServices, addOnServices].filter(Boolean).join(' + ');
